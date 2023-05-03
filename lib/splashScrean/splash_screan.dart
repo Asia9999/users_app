@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:users_app/authentication/login-screen.dart';
 import 'package:users_app/mainScreens/main_screen.dart';
 
+import '../assistants/assistant_methods.dart';
 import '../global/global.dart';
 
 class MySplashScrean extends StatefulWidget {
@@ -15,6 +16,9 @@ class MySplashScrean extends StatefulWidget {
 class _MySplashScreanState extends State<MySplashScrean> {
   //display timer
   startTimer(){
+
+   fAuth.currentUser!=null ? AssistantMethods.readCurrentOnlineUserInfo() :null;
+
     Timer(const Duration(seconds: 3),()async
     {
       if(await fAuth.currentUser != null)

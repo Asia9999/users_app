@@ -81,8 +81,8 @@ class _SignUpScreenState extends State<SignUpScreen>
          "phone":phoneTextEditingController.text.trim(),
        };
        //all driver information
-     DatabaseReference driverRef =  FirebaseDatabase.instance.ref().child("users");
-       driverRef.child(firebaseUser.uid).set(usersMap);
+     DatabaseReference reference =  FirebaseDatabase.instance.ref().child("users");
+       reference.child(firebaseUser.uid).set(usersMap);
 
 
        currentFirebaseUser = firebaseUser;
