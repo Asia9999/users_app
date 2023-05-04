@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:users_app/assistants/assistant_methods.dart';
 import 'package:users_app/global/global.dart';
+import 'package:users_app/mainScreens/search_places_screen.dart';
 import 'package:users_app/widgets/my_drawer.dart';
 
 import '../authentication/login-screen.dart';
+import '../infoHandler/app_info.dart';
 
 
 class MainsScreen extends StatefulWidget
@@ -164,7 +167,9 @@ class _MainsScreenState extends State<MainsScreen>
                                 style: TextStyle(color: Colors.purpleAccent, fontSize: 12),
                               ),
                               Text(
-                                "Your current location",
+                                Provider.of<AppInfo>(context).userPickUpLocation != null
+                                    ? (Provider.of<AppInfo>(context).userPickUpLocation!.locationName!).substring(0,24) + "..."
+                                    : "not getting address",
                                 style: const TextStyle(color: Colors.purpleAccent, fontSize: 14),
                               ),
                             ],
@@ -181,24 +186,32 @@ class _MainsScreenState extends State<MainsScreen>
 
                       const SizedBox(height: 16.0,),
                       // to
-                      Row(
-                        children: [
-                          const Icon(Icons.add_location_alt_outlined, color: Colors.purpleAccent,),
-                          const SizedBox(width: 12.0,),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "To",
-                                style: TextStyle(color: Colors.purpleAccent, fontSize: 12),
-                              ),
-                              Text(
-                                "User drop of location",
-                                style: const TextStyle(color: Colors.purpleAccent, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ],
+
+                      GestureDetector(
+                           onTap: ()
+                           {
+                             // go to  Search Places Screen
+                             Navigator.push(context, MaterialPageRoute(builder: (c)=> SearchPlacesScreen()));
+                             },
+                        child: Row(
+                          children: [
+                            const Icon(Icons.add_location_alt_outlined, color: Colors.purpleAccent,),
+                            const SizedBox(width: 12.0,),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "To",
+                                  style: TextStyle(color: Colors.purpleAccent, fontSize: 12),
+                                ),
+                                Text(
+                                  "Where you want to go",
+                                  style: const TextStyle(color: Colors.purpleAccent, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 10.0,),
