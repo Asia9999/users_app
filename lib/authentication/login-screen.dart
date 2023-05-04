@@ -12,7 +12,7 @@ class LoginScreen extends StatefulWidget
 {
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
 

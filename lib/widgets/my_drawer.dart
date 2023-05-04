@@ -12,7 +12,7 @@ class MyDrawer extends StatefulWidget
   MyDrawer({this.name,this.email});
 
   @override
-  State<MyDrawer> createState() => _MyDrawerState();
+  _MyDrawerState createState() => _MyDrawerState();
 }
 
 class _MyDrawerState extends State<MyDrawer>

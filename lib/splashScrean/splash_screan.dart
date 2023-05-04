@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:users_app/assistants/assistant_methods.dart';
 import 'package:users_app/authentication/login-screen.dart';
+import 'package:users_app/global/global.dart';
 import 'package:users_app/mainScreens/main_screen.dart';
-
-import '../assistants/assistant_methods.dart';
-import '../global/global.dart';
 
 class MySplashScrean extends StatefulWidget {
   const MySplashScrean({Key? key}) : super(key: key);
@@ -59,16 +58,17 @@ class _MySplashScreanState extends State<MySplashScrean> {
               style: TextStyle(
                 fontSize: 20,
                   color: Colors.black,
+                  fontFamily: 'Sigmar',
                   fontWeight: FontWeight.bold
               ),
             ),
             const Text(
-              "                                     "
-                  "  A ride is just a click away Share "
-                  "  your ride at the lowest cost ",
+                  "\n\nA ride is just a click away Share\n "
+                  " your ride at the lowest cost ",
               style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   color: Colors.black,
+                  fontFamily: 'Lobster', //  'Bruno Ace SC'  or
                   fontWeight: FontWeight.bold
               ),
             ),
