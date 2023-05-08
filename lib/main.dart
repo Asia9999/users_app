@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:users_app/splashScrean/splash_screan.dart';
 import 'infoHandler/app_info.dart';
 
+import 'infoHandler/app_info.dart';
+
 void main() async
 {
   WidgetsFlutterBinding.ensureInitialized();
