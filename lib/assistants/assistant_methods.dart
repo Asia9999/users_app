@@ -1,16 +1,16 @@
-//import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:users_app/assistants/request_assistant.dart';
+import 'package:users_app/global/global.dart';
 import 'package:users_app/global/map_key.dart';
+import 'package:users_app/infoHandler/app_info.dart';
 import 'package:users_app/models/direction_details_info.dart';
+import 'package:users_app/models/directions.dart';
 import 'package:users_app/models/user_model.dart';
 
-import '../global/global.dart';
-import '../infoHandler/app_info.dart';
-import '../models/directions.dart';
 
 class AssistantMethods
 {
@@ -77,6 +77,18 @@ class AssistantMethods
 
     return directionDetailsInfo;
 
+  }
+
+
+  static double calculateFareAmountFromOriginToDestination(DirectionDetailsInfo directionDetailsInfo)
+  {
+    double timeTraveledFareAmountPerMinute = (directionDetailsInfo.duration_value! / 60) * 0.1;
+    double distanceTraveledFareAmountPerKilometer = (directionDetailsInfo.duration_value! / 1000) * 0.1;
+
+    //USD
+    double totalFareAmount = timeTraveledFareAmountPerMinute + distanceTraveledFareAmountPerKilometer;
+
+    return double.parse(totalFareAmount.toStringAsFixed(1));
   }
 
 }

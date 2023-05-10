@@ -53,6 +53,7 @@ class _MySplashScreanState extends State<MySplashScrean> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset("images/Logo.jpeg"),
+            const SizedBox(height: 10,),
            const Text(
               "Welcome to Group Ride Hailing",
               style: TextStyle(
