@@ -3,7 +3,8 @@ import 'package:users_app/global/global.dart';
 import 'package:smooth_star_rating_nsafe/smooth_star_rating.dart';
 import 'package:flutter/services.dart';
 
-class SelectNearestActiveDriversScreen extends StatefulWidget {
+class SelectNearestActiveDriversScreen extends StatefulWidget
+{
   const SelectNearestActiveDriversScreen({Key? key}): super(key: key);
 
   @override
@@ -14,9 +15,9 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white54,
+        backgroundColor: Colors.purpleAccent,
         title: const Text(
           "Nearest Online Drivers",
           style: TextStyle(
@@ -25,11 +26,11 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
         ),
         leading: IconButton(
           icon: const Icon(
-            Icons.close, color: Colors.white,
+            Icons.close, color: Colors.purple,
           ),
           onPressed: ()
           {
-            //delete/remove the ride request from database
+            //remove the ride request from database
             SystemNavigator.pop();
           },
           ),
@@ -41,13 +42,13 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
             return Card(
               color: Colors.grey,
               elevation: 3,
-              shadowColor: Colors.green,
+              shadowColor: Colors.purpleAccent,
               margin: const EdgeInsets.all(8),
               child: ListTile(
                 leading: Padding(
                   padding: const EdgeInsets.only(top: 2.0),
                   child: Image.asset(
-                    "images/" + dList[index]["car_details"]["type"].toString() + ".png",
+                    "images/" + dList[index]["car_details"]["type"].toString() + ".jpeg",
                     width: 70,
                   ),
                 ),
@@ -58,20 +59,20 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
                      dList[index]["name"],
                      style: const TextStyle(
                        fontSize: 14,
-                       color: Colors.black54,
+                       color: Colors.white,
                      ),
                     ),
                     Text(
                       dList[index]["car_details"]["car_model"],
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.white54,
+                        color: Colors.purpleAccent,
                     ),
                     ),
                     SmoothStarRating(
                       rating: 3.5,
-                      color: Colors.black,
-                      borderColor: Colors.black,
+                      color: Colors.white,
+                      borderColor: Colors.white,
                       allowHalfRating: true,
                       starCount: 5,
                       size: 15,
@@ -92,7 +93,7 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
                       "13 km",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.black54,
+                        color: Colors.purpleAccent,
                         fontSize: 12
                       ),
                     ),

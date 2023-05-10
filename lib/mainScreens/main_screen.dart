@@ -111,8 +111,9 @@ class _MainsScreenState extends State<MainsScreen> {
 
   saveRideRequestInformation()
   {
-    //1. save the RideRequest information
+    //save the RideRequest information
     onlineNearbyAvailableDriversList = GeoFireAssistant.activeNearbyAvailableDriversList;
+     searchNearestOnlineDrivers();
   }
 
   searchNearestOnlineDrivers() async
@@ -120,7 +121,7 @@ class _MainsScreenState extends State<MainsScreen> {
     // no active driver available
     if (onlineNearbyAvailableDriversList.length == 0)
     {
-      //cancel/delete the RideRequest information
+      //cancel the RideRequest information
       setState(() {
         polyLineSet.clear();
         markersSet.clear();
@@ -128,8 +129,7 @@ class _MainsScreenState extends State<MainsScreen> {
         pLineCoOrdinatesList.clear();
       });
 
-      //Fluttertoast.showToast(msg: "No online nearest driver available. ");
-      Fluttertoast.showToast(msg: "Search again for ride after some time, Restarting App Now. ");
+      Fluttertoast.showToast(msg: " No online nearest driver available Search again for ride after some time, Restarting App Now. ");
 
       Future.delayed(const Duration(milliseconds: 4000), ()
       {
@@ -151,13 +151,13 @@ class _MainsScreenState extends State<MainsScreen> {
     DatabaseReference ref = FirebaseDatabase.instance.ref().child("drivers");
     for(int i=0; i<onlineNearestDriversList.length; i++)
     {
-    await ref.child(onlineNearestDriversList[i].key.toString())
+    await ref.child(onlineNearestDriversList[i].driverId.toString())
         .once()
         .then((dataSnapShot)
         {
           var driverKeyInfo = dataSnapShot.snapshot.value;
           dList.add(driverKeyInfo);
-          print("DriverKey Information"+ dList.toString());
+         // print("DriverKey Information"+ dList.toString());
         });
     }
   }
@@ -352,7 +352,7 @@ class _MainsScreenState extends State<MainsScreen> {
                         ),
                         onPressed: ()
                         {
-                          if (Provider.of<AppInfo>(context, listen: false).userPickUpLocation != null)
+                          if (Provider.of<AppInfo>(context, listen: false).userDropOffLocation != null)
                             {
                               saveRideRequestInformation();
                             }
