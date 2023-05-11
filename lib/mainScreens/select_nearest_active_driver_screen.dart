@@ -49,7 +49,7 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.purpleAccent,
+        backgroundColor: Colors.white54,
         title: const Text(
           "Nearest Online Drivers",
           style: TextStyle(
@@ -58,22 +58,31 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
         ),
         leading: IconButton(
           icon: const Icon(
-            Icons.close, color: Colors.white54,
+              Icons.close, color: Colors.white
           ),
           onPressed: ()
           {
-            //remove the ride request from database
+            //delete/remove the ride request from database
             widget.referenceRideRequest!.remove();
-            Fluttertoast.showToast(msg: "You have canelled the ride request.");
+            Fluttertoast.showToast(msg: "you have cancelled the ride request.");
+
             SystemNavigator.pop();
           },
-          ),
         ),
+      ),
       body: ListView.builder(
         itemCount: dList.length,
-        itemBuilder: (BuildContext context, int index )
-          {
-            return Card(
+        itemBuilder: (BuildContext context, int index)
+        {
+          return GestureDetector(
+            onTap: ()
+            {
+              setState(() {
+                chosenDriverId = dList[index]["id"].toString();
+              });
+              Navigator.pop(context, "driverChoosed");
+            },
+            child: Card(
               color: Colors.grey,
               elevation: 3,
               shadowColor: Colors.purpleAccent,
@@ -86,22 +95,22 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
                     width: 70,
                   ),
                 ),
-                title:Column(
+                title: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Text(
-                     dList[index]["name"],
-                     style: const TextStyle(
-                       fontSize: 14,
-                       color: Colors.white,
-                     ),
+                      dList[index]["name"],
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
                     ),
                     Text(
                       dList[index]["car_details"]["car_model"],
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.purple,
-                    ),
+                      ),
                     ),
                     SmoothStarRating(
                       rating: 3.5,
@@ -132,7 +141,6 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
                           fontSize: 12
                       ),
                     ),
-
                     const SizedBox(height: 2,),
                     Text(
                       tripDirectionDetailsInfo != null ? tripDirectionDetailsInfo!.distance_text! : "",
@@ -145,10 +153,10 @@ class _SelectNearestActiveDriversScreenState extends State<SelectNearestActiveDr
                   ],
                 ),
               ),
-            );
-        }
+            ),
+          );
+        },
       ),
-
     );
 
   }
