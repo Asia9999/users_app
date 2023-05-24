@@ -1,4 +1,7 @@
 import 'dart:async';
+//import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -46,6 +49,9 @@ class _MainsScreenState extends State<MainsScreen> {
 
   GlobalKey<ScaffoldState> sKey = GlobalKey<ScaffoldState>();
   double searchLocationContainerHeight = 220;
+  double waitingResponseFromDriverContainerHeight = 0;
+  double assignedDriverInfoContainerHeight = 0;
+
 
   Position? userCurrentPosition;
   var geoLocator = Geolocator();
@@ -70,6 +76,7 @@ class _MainsScreenState extends State<MainsScreen> {
   List<ActiveNearbyAvailableDrivers> onlineNearbyAvailableDriversList = [];
 
   DatabaseReference? referenceRideRequest;
+  String driverRideStatus=" Driver is Coming";
 
   checkIfLocationPermissionAllowed() async
   {
@@ -188,6 +195,39 @@ class _MainsScreenState extends State<MainsScreen> {
         {
           //send notification to that specific driver
           sendNotificationToDriverNow(chosenDriverId!);
+          //Display Waiting Response UI from a Driver
+            showWaitingResponseFromDriverUI();
+
+          //Response from a Driver
+          FirebaseDatabase.instance.ref()
+              .child("drivers")
+              .child(chosenDriverId!)
+              .child("newRideStatus")
+              .onValue.listen((eventSnapshot)
+          {
+            //1. driver has cancel the rideRequest :: Push Notification
+            // (newRideStatus = idle)
+            if(eventSnapshot.snapshot.value == "idle")
+            {
+              Fluttertoast.showToast(msg: "The driver has cancelled your request , Please choose another driver.");
+
+              Future.delayed(const Duration(milliseconds: 3000), ()
+              {
+                Fluttertoast.showToast(msg: "Please Restart App Now.");
+
+                SystemNavigator.pop();
+              });
+            }
+
+            //2. driver has accept the rideRequest :: Push Notification
+            // (newRideStatus = accepted)
+            if(eventSnapshot.snapshot.value == "accepted")
+            {
+              //design and display ui for displaying assigned driver information
+                 showUIForAssignedDriverInfo();
+            }
+          });
+
         }
         else
         {
@@ -195,6 +235,22 @@ class _MainsScreenState extends State<MainsScreen> {
         }
       });
     }
+  }
+  showUIForAssignedDriverInfo()
+  {
+    setState(() {
+      waitingResponseFromDriverContainerHeight = 0;
+      searchLocationContainerHeight = 0;
+      assignedDriverInfoContainerHeight = 240;
+    });
+  }
+
+  showWaitingResponseFromDriverUI()
+  {
+    setState(() {
+      searchLocationContainerHeight = 0;
+      waitingResponseFromDriverContainerHeight = 220;
+    });
   }
 
   sendNotificationToDriverNow(String chosenDriverId)
@@ -207,7 +263,32 @@ class _MainsScreenState extends State<MainsScreen> {
         .child("newRideStatus")
         .set(referenceRideRequest!.key);
 
-    //automate the push notification
+    //automate the push notification system
+    FirebaseDatabase.instance.ref()
+        .child("drivers")
+        .child(chosenDriverId)
+        .child("token").once().then((snap)
+    {
+      if(snap.snapshot.value != null)
+      {
+        String deviceRegistrationToken = snap.snapshot.value.toString();
+
+        //send Notification Now
+        AssistantMethods.sendNotificationToDriverNow(
+          deviceRegistrationToken,
+          referenceRideRequest!.key.toString(),
+          context,
+        );
+
+        Fluttertoast.showToast(msg: "Requesting sent Successfully.");
+      }
+      else
+      {
+        Fluttertoast.showToast(msg: "Please choose another driver.");
+        return;
+      }
+    });
+
   }
 
 
@@ -444,6 +525,163 @@ class _MainsScreenState extends State<MainsScreen> {
             ),
           ),
 
+          //ui for waiting response from driver
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: waitingResponseFromDriverContainerHeight,
+              decoration: const BoxDecoration(
+                color: Colors.white38,
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(20),
+                  topLeft: Radius.circular(20),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Center(
+                  child: AnimatedTextKit(
+                    animatedTexts: [
+                      FadeAnimatedText(
+                        'Waiting for Response\nfrom Driver',
+                        duration: const Duration(seconds: 6),
+                        textAlign: TextAlign.center,
+                        textStyle: const TextStyle(fontSize: 30.0, color: Colors.purpleAccent, fontWeight: FontWeight.bold),
+                      ),
+                      ScaleAnimatedText(
+                        'Please wait...',
+                        duration: const Duration(seconds: 10),
+                        textAlign: TextAlign.center,
+                        textStyle: const TextStyle(fontSize: 32.0, color: Colors.purpleAccent, fontFamily: 'Canterbury'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          //ui for displaying assigned driver information
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: assignedDriverInfoContainerHeight,
+              decoration: const BoxDecoration(
+                color: Colors.white38,
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(20),
+                  topLeft: Radius.circular(20),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    //status of ride
+                    Center(
+                      child: Text(
+                        driverRideStatus,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purpleAccent,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: 20.0,
+                    ),
+
+                    const Divider(
+                      height: 2,
+                      thickness: 2,
+                      color: Colors.purpleAccent,
+                    ),
+
+                    const SizedBox(
+                      height: 20.0,
+                    ),
+
+                    //driver vehicle details
+                    Text(
+                    //  driverCarDetails,
+                      "Tesla",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white54,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: 2.0,
+                    ),
+
+                    //driver name
+                    Text(
+                      //driverName,
+                       "Asia",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white54,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: 20.0,
+                    ),
+
+                    const Divider(
+                      height: 2,
+                      thickness: 2,
+                      color: Colors.purpleAccent,
+                    ),
+
+                    const SizedBox(
+                      height: 20.0,
+                    ),
+
+                    //call driver button
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: ()
+                        {
+
+                        },
+                        style: ElevatedButton.styleFrom(
+                          primary: Colors.purple,
+                        ),
+                        icon: const Icon(
+                          Icons.phone_android,
+                          color: Colors.white38,
+                          size: 22,
+                        ),
+                        label: const Text(
+                          "Call Driver",
+                          style: TextStyle(
+                            color: Colors.purpleAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
         ],
       ),
     );
@@ -669,7 +907,7 @@ class _MainsScreenState extends State<MainsScreen> {
     if (activeNearbyIcon == null)
       {
         ImageConfiguration imageConfiguration = createLocalImageConfiguration(context, size: const Size(4,4));
-        BitmapDescriptor.fromAssetImage(imageConfiguration, "images/car.jpg").then((value)
+        BitmapDescriptor.fromAssetImage(imageConfiguration, "images/car.png").then((value)
         {
           activeNearbyIcon = value;
         });
