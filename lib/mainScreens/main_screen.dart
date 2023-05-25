@@ -77,6 +77,9 @@ class _MainsScreenState extends State<MainsScreen> {
 
   DatabaseReference? referenceRideRequest;
   String driverRideStatus=" Driver is Coming";
+  StreamSubscription<DatabaseEvent>? tripRideRequestInfoStreamSubscription;
+  String userRideRequestStatus="";
+  bool requestPositionInfo = true;
 
   checkIfLocationPermissionAllowed() async
   {
@@ -148,8 +151,130 @@ class _MainsScreenState extends State<MainsScreen> {
     
     referenceRideRequest!.set(userInformationMap);
 
+    referenceRideRequest!.set(userInformationMap);
+
+    tripRideRequestInfoStreamSubscription = referenceRideRequest!.onValue.listen((eventSnap)
+    {
+      if(eventSnap.snapshot.value == null)
+      {
+        return;
+      }
+
+      if((eventSnap.snapshot.value as Map)["car_details"] != null)
+      {
+        setState(() {
+          driverCarDetails = (eventSnap.snapshot.value as Map)["car_details"].toString();
+        });
+      }
+
+      if((eventSnap.snapshot.value as Map)["driverPhone"] != null)
+      {
+        setState(() {
+          driverPhone = (eventSnap.snapshot.value as Map)["driverPhone"].toString();
+        });
+      }
+
+      if((eventSnap.snapshot.value as Map)["driverName"] != null)
+      {
+        setState(() {
+          driverName = (eventSnap.snapshot.value as Map)["driverName"].toString();
+        });
+      }
+
+      if((eventSnap.snapshot.value as Map)["status"] != null)
+      {
+        userRideRequestStatus = (eventSnap.snapshot.value as Map)["status"].toString();
+      }
+
+      if((eventSnap.snapshot.value as Map)["driverLocation"] != null)
+      {
+        double driverCurrentPositionLat = double.parse((eventSnap.snapshot.value as Map)["driverLocation"]["latitude"].toString());
+        double driverCurrentPositionLng = double.parse((eventSnap.snapshot.value as Map)["driverLocation"]["longitude"].toString());
+
+        LatLng driverCurrentPositionLatLng = LatLng(driverCurrentPositionLat, driverCurrentPositionLng);
+
+        //status = accepted
+        if(userRideRequestStatus == "accepted")
+        {
+           updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng);
+        }
+
+        //status = arrived
+        if(userRideRequestStatus == "arrived")
+        {
+          setState(() {
+            driverRideStatus = "Driver has Arrived";
+          });
+        }
+
+        ////status = ontrip
+        if(userRideRequestStatus == "ontrip")
+        {
+          updateReachingTimeToUserDropOffLocation(driverCurrentPositionLatLng);
+        }
+      }
+    });
+
+
+
     onlineNearbyAvailableDriversList = GeoFireAssistant.activeNearbyAvailableDriversList;
      searchNearestOnlineDrivers();
+  }
+  updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng) async
+  {
+    if(requestPositionInfo == true)
+    {
+      requestPositionInfo = false;
+
+      LatLng userPickUpPosition = LatLng(userCurrentPosition!.latitude, userCurrentPosition!.longitude);
+
+      var directionDetailsInfo = await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+        driverCurrentPositionLatLng,
+        userPickUpPosition,
+      );
+
+      if(directionDetailsInfo == null)
+      {
+        return;
+      }
+
+      setState(() {
+        driverRideStatus =  "Driver is Coming :: " + directionDetailsInfo.duration_text.toString();
+      });
+
+      requestPositionInfo = true;
+    }
+  }
+
+  updateReachingTimeToUserDropOffLocation(driverCurrentPositionLatLng) async
+  {
+    if(requestPositionInfo == true)
+    {
+      requestPositionInfo = false;
+
+      var dropOffLocation = Provider.of<AppInfo>(context, listen: false).userDropOffLocation;
+
+      LatLng userDestinationPosition = LatLng(
+          dropOffLocation!.locationLatitude!,
+          dropOffLocation!.locationLongitude!
+      );
+
+      var directionDetailsInfo = await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+        driverCurrentPositionLatLng,
+        userDestinationPosition,
+      );
+
+      if(directionDetailsInfo == null)
+      {
+        return;
+      }
+
+      setState(() {
+        driverRideStatus =  "Going towards Destination :: " + directionDetailsInfo.duration_text.toString();
+      });
+
+      requestPositionInfo = true;
+    }
   }
 
   searchNearestOnlineDrivers() async
@@ -613,12 +738,11 @@ class _MainsScreenState extends State<MainsScreen> {
 
                     //driver vehicle details
                     Text(
-                    //  driverCarDetails,
-                      "Tesla",
+                     driverCarDetails,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
-                        color: Colors.white54,
+                        color: Colors.purpleAccent,
                       ),
                     ),
 
@@ -628,13 +752,12 @@ class _MainsScreenState extends State<MainsScreen> {
 
                     //driver name
                     Text(
-                      //driverName,
-                       "Asia",
+                      driverName,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white54,
+                        color: Colors.purpleAccent,
                       ),
                     ),
 
