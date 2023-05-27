@@ -6,6 +6,9 @@ import 'infoHandler/app_info.dart';
 
 import 'infoHandler/app_info.dart';
 
+// create global key
+GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async
 {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +19,7 @@ void main() async
         create: (context) => AppInfo(),
         child: MaterialApp(
           title: 'Drivers App',
+          navigatorKey: navigatorKey,
           theme: ThemeData(
 
             primarySwatch: Colors.purple,
