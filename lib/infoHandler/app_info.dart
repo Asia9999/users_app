@@ -22,34 +22,63 @@ import '../models/ticket.dart';
 import '../widgets/progress_dialog.dart';
 
 class AppInfo extends ChangeNotifier {
-  // variables
-  Directions? userPickUpLocation, userDropOffLocation;
-  LocationPermission? _locationPermission;
-  Position? userCurrentPosition;
-  GoogleMapController? newGoogleMapController;
-  String userName = "your Name";
-  String userEmail = "your Email";
-  List<Ticket> tickets = [];
-  bool activeNearbyDriverKeysLoaded = false;
-  Set<Marker> markersSet = {};
-  Set<Circle> circlesSet = {};
-  List<LatLng> pLineCoOrdinatesList = [];
-  Set<Polyline> polyLineSet = {};
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _ticketSnapshot;
+// variables
+ // User Information
+String userName = "your Name";
+String userEmail = "your Email";
 
-  double searchLocationContainerHeight = 220;
+// Map Configuration
+static const CameraPosition kGooglePlex = CameraPosition(
+  target: LatLng(37.42796133580664, -122.085749655962),
+  zoom: 14.4746,
+);
+double bottomPaddingOfMap = 0;
 
-  var geoLocator = Geolocator();
+// Container Heights
+double searchLocationContainerHeight = 220;
+double waitingResponseFromDriverContainerHeight = 0;
+double assignedDriverInfoContainerHeight = 0;
 
-  double bottomPaddingOfMap = 0;
+// Booleans
+bool activeNearbyDriverKeysLoaded = false;
+bool openNavigationDrawer = true;
+bool requestPositionInfo = true;
 
-  bool openNavigationDrawer = true;
+// Lists
+List<Ticket> tickets = [];
+List<ActiveNearbyAvailableDrivers> onlineNearbyAvailableDriversList = [];
+List<LatLng> pLineCoOrdinatesList = [];
 
-  BitmapDescriptor? activeNearbyIcon;
+// Sets
+Set<Marker> markersSet = {};
+Set<Circle> circlesSet = {};
+Set<Polyline> polyLineSet = {};
 
-  List<ActiveNearbyAvailableDrivers> onlineNearbyAvailableDriversList = [];
+// Other Variables
+GlobalKey<ScaffoldState> sKey = GlobalKey<ScaffoldState>();
 
-  DatabaseReference? referenceRideRequest;
+// Location and Maps
+Directions? userPickUpLocation, userDropOffLocation;
+LocationPermission? _locationPermission;
+Position? userCurrentPosition;
+GoogleMapController? newGoogleMapController;
+
+// Subscriptions
+StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _ticketSnapshot;
+StreamSubscription<DatabaseEvent>? tripRideRequestInfoStreamSubscription;
+
+// Geolocation
+var geoLocator = Geolocator();
+
+// Icons
+BitmapDescriptor? activeNearbyIcon;
+
+// Database and References
+DatabaseReference? referenceRideRequest;
+
+// Ride Status
+String driverRideStatus = "Driver is Coming";
+String userRideRequestStatus = "";
   // end of variables
 
   checkIfLocationPermissionAllowed() async {
@@ -410,6 +439,35 @@ class AppInfo extends ChangeNotifier {
         if (snap.snapshot.value != null) {
           //send notification to that specific driver
           sendNotificationToDriverNow(chosenDriverId!);
+          showWaitingResponseFromDriverUI();
+
+          //Response from a Driver
+          FirebaseDatabase.instance
+              .ref()
+              .child("drivers")
+              .child(chosenDriverId!)
+              .child("newRideStatus")
+              .onValue
+              .listen((eventSnapshot) {
+            //1. driver has cancel the rideRequest :: Push Notification
+            // (newRideStatus = idle)
+            if (eventSnapshot.snapshot.value == "idle") {
+              Fluttertoast.showToast(
+                  msg:
+                      "The driver has cancelled your request , Please choose another driver.");
+
+              Future.delayed(const Duration(milliseconds: 3000), () {
+                Fluttertoast.showToast(msg: "Please Restart App Now.");
+              });
+            }
+
+            //2. driver has accept the rideRequest :: Push Notification
+            // (newRideStatus = accepted)
+            if (eventSnapshot.snapshot.value == "accepted") {
+              //design and display ui for displaying assigned driver information
+              showUIForAssignedDriverInfo();
+            }
+          });
         } else {
           Fluttertoast.showToast(msg: "This driver do not exist. Try again.");
         }
@@ -417,9 +475,22 @@ class AppInfo extends ChangeNotifier {
     }
   }
 
+  showUIForAssignedDriverInfo() {
+    waitingResponseFromDriverContainerHeight = 0;
+    searchLocationContainerHeight = 0;
+    assignedDriverInfoContainerHeight = 240;
+  }
+
+  showWaitingResponseFromDriverUI() {
+    searchLocationContainerHeight = 0;
+    waitingResponseFromDriverContainerHeight = 220;
+  }
+
   saveRideRequestInformation() {
     //save the RideRequest information
     // 1
+
+    //save the RideRequest information
 
     referenceRideRequest =
         FirebaseDatabase.instance.ref().child("All Ride Requests").push();
@@ -428,16 +499,111 @@ class AppInfo extends ChangeNotifier {
 
     Map originLocationMap = {
       //"key": value
-      "latitude": originLocation!.locationLatitude!.toStringAsFixed(3),
-      "longitude": originLocation.locationLongitude!.toStringAsFixed(3),
+      "latitude": originLocation!.locationLatitude.toString(),
+      "longitude": originLocation!.locationLongitude.toString(),
     };
 
     Map destinationLocationMap = {
       //"key": value
-      "latitude": destinationLocation!.locationLatitude!.toStringAsFixed(2),
-      "longitude": destinationLocation.locationLongitude!.toStringAsFixed(2),
+      "latitude": destinationLocation!.locationLatitude.toString(),
+      "longitude": destinationLocation!.locationLongitude.toString(),
     };
 
+    Map userInformationMap = {
+      "origin": originLocationMap,
+      "destination": destinationLocationMap,
+      "time": DateTime.now().toString(),
+      "userName": userModelCurrentInfo!.name,
+      "userPhone": userModelCurrentInfo!.phone,
+      "originAddress": originLocation.locationName,
+      "destinationAddress": destinationLocation.locationName,
+      "driverId": "waiting",
+    };
+
+    referenceRideRequest!.set(userInformationMap);
+
+    tripRideRequestInfoStreamSubscription =
+        referenceRideRequest!.onValue.listen((eventSnap) {
+      if (eventSnap.snapshot.value == null) {
+        return;
+      }
+
+      if ((eventSnap.snapshot.value as Map)["car_details"] != null) {
+        driverCarDetails =
+            (eventSnap.snapshot.value as Map)["car_details"].toString();
+      }
+
+      if ((eventSnap.snapshot.value as Map)["driverPhone"] != null) {
+        driverPhone =
+            (eventSnap.snapshot.value as Map)["driverPhone"].toString();
+      }
+
+      if ((eventSnap.snapshot.value as Map)["driverName"] != null) {
+        driverName = (eventSnap.snapshot.value as Map)["driverName"].toString();
+      }
+
+      if ((eventSnap.snapshot.value as Map)["status"] != null) {
+        userRideRequestStatus =
+            (eventSnap.snapshot.value as Map)["status"].toString();
+      }
+
+      if ((eventSnap.snapshot.value as Map)["driverLocation"] != null) {
+        double driverCurrentPositionLat = double.parse(
+            (eventSnap.snapshot.value as Map)["driverLocation"]["latitude"]
+                .toString());
+        double driverCurrentPositionLng = double.parse(
+            (eventSnap.snapshot.value as Map)["driverLocation"]["longitude"]
+                .toString());
+
+        LatLng driverCurrentPositionLatLng =
+            LatLng(driverCurrentPositionLat, driverCurrentPositionLng);
+
+        //status = accepted
+        if (userRideRequestStatus == "accepted") {
+          updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng);
+        }
+
+        //status = arrived
+        if (userRideRequestStatus == "arrived") {
+          driverRideStatus = "Driver has Arrived";
+        }
+
+        ////status = ontrip
+        if (userRideRequestStatus == "ontrip") {
+          updateReachingTimeToUserDropOffLocation(driverCurrentPositionLatLng);
+        }
+      }
+    });
+
+    onlineNearbyAvailableDriversList =
+        GeoFireAssistant.activeNearbyAvailableDriversList;
+    searchNearestOnlineDrivers();
+  }
+
+  updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng) async {
+    if (requestPositionInfo == true) {
+      requestPositionInfo = false;
+
+      LatLng userPickUpPosition =
+          LatLng(userCurrentPosition!.latitude, userCurrentPosition!.longitude);
+
+      var directionDetailsInfo =
+          await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+        driverCurrentPositionLatLng,
+        userPickUpPosition,
+      );
+
+      if (directionDetailsInfo == null) {
+        return;
+      }
+
+      driverRideStatus = "Driver is Coming :: " +
+          directionDetailsInfo.duration_text.toString();
+
+      requestPositionInfo = true;
+
+      notifyListeners();
+    }
     // Map userInformationMap = {
     //   "origin": originLocationMap,
     //   "destination": destinationLocationMap,
@@ -475,11 +641,11 @@ class AppInfo extends ChangeNotifier {
     //   log("value.docs.length: ${value.id}");
     // });
 
-    checkAvailableTickets(
-        GeoPoint(destinationLocation.locationLatitude!,
-            destinationLocation.locationLongitude!),
-        GeoPoint(originLocation.locationLatitude!,
-            originLocation.locationLongitude!));
+    // checkAvailableTickets(
+    //     GeoPoint(destinationLocation.locationLatitude!,
+    //         destinationLocation.locationLongitude!),
+    //     GeoPoint(originLocation.locationLatitude!,
+    //         originLocation.locationLongitude!));
 
     // searchNearestOnlineDrivers();
   }
@@ -520,6 +686,34 @@ class AppInfo extends ChangeNotifier {
           .then((value) {
         activeNearbyIcon = value;
       });
+    }
+  }
+
+  updateReachingTimeToUserDropOffLocation(driverCurrentPositionLatLng) async {
+    if (requestPositionInfo == true) {
+      requestPositionInfo = false;
+
+      var dropOffLocation = userDropOffLocation;
+
+      LatLng userDestinationPosition = LatLng(
+          dropOffLocation!.locationLatitude!,
+          dropOffLocation!.locationLongitude!);
+
+      var directionDetailsInfo =
+          await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+        driverCurrentPositionLatLng,
+        userDestinationPosition,
+      );
+
+      if (directionDetailsInfo == null) {
+        return;
+      }
+
+      driverRideStatus = "Going towards Destination :: " +
+          directionDetailsInfo.duration_text.toString();
+
+      requestPositionInfo = true;
+      notifyListeners();
     }
   }
 }
