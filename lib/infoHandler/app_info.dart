@@ -1,9 +1,11 @@
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_geofire/flutter_geofire.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -11,6 +13,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:users_app/main.dart';
 import 'package:users_app/models/directions.dart';
+import 'package:users_app/models/driver.dart';
 import 'dart:async';
 
 import '../assistants/assistant_methods.dart';
@@ -20,65 +23,68 @@ import '../mainScreens/select_nearest_active_driver_screen.dart';
 import '../models/active_nearby_available_drivers.dart';
 import '../models/ticket.dart';
 import '../widgets/progress_dialog.dart';
+import 'dart:ui' as ui;
 
 class AppInfo extends ChangeNotifier {
 // variables
- // User Information
-String userName = "your Name";
-String userEmail = "your Email";
+  // User Information
+  String userName = "your Name";
+  String userEmail = "your Email";
 
 // Map Configuration
-static const CameraPosition kGooglePlex = CameraPosition(
-  target: LatLng(37.42796133580664, -122.085749655962),
-  zoom: 14.4746,
-);
-double bottomPaddingOfMap = 0;
+  static const CameraPosition kGooglePlex = CameraPosition(
+    target: LatLng(37.42796133580664, -122.085749655962),
+    zoom: 14.4746,
+  );
+  double bottomPaddingOfMap = 0;
 
 // Container Heights
-double searchLocationContainerHeight = 220;
-double waitingResponseFromDriverContainerHeight = 0;
-double assignedDriverInfoContainerHeight = 0;
+  double searchLocationContainerHeight = 220;
+  double waitingResponseFromDriverContainerHeight = 0;
+  double assignedDriverInfoContainerHeight = 0;
 
 // Booleans
-bool activeNearbyDriverKeysLoaded = false;
-bool openNavigationDrawer = true;
-bool requestPositionInfo = true;
+  bool activeNearbyDriverKeysLoaded = false;
+  bool openNavigationDrawer = true;
+  bool requestPositionInfo = true;
 
 // Lists
-List<Ticket> tickets = [];
-List<ActiveNearbyAvailableDrivers> onlineNearbyAvailableDriversList = [];
-List<LatLng> pLineCoOrdinatesList = [];
+  List<Ticket> tickets = [];
+  List<ActiveNearbyAvailableDrivers> onlineNearbyAvailableDriversList = [];
+  List<LatLng> pLineCoOrdinatesList = [];
 
 // Sets
-Set<Marker> markersSet = {};
-Set<Circle> circlesSet = {};
-Set<Polyline> polyLineSet = {};
+  Set<Marker> markersSet = {};
+  Set<Circle> circlesSet = {};
+  Set<Polyline> polyLineSet = {};
 
 // Other Variables
-GlobalKey<ScaffoldState> sKey = GlobalKey<ScaffoldState>();
+  GlobalKey<ScaffoldState> sKey = GlobalKey<ScaffoldState>();
 
 // Location and Maps
-Directions? userPickUpLocation, userDropOffLocation;
-LocationPermission? _locationPermission;
-Position? userCurrentPosition;
-GoogleMapController? newGoogleMapController;
+  Directions? userPickUpLocation, userDropOffLocation;
+  LocationPermission? _locationPermission;
+  Position? userCurrentPosition;
+  GoogleMapController? newGoogleMapController;
 
 // Subscriptions
-StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _ticketSnapshot;
-StreamSubscription<DatabaseEvent>? tripRideRequestInfoStreamSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _ticketSnapshot;
+  StreamSubscription<DatabaseEvent>? tripRideRequestInfoStreamSubscription;
 
 // Geolocation
-var geoLocator = Geolocator();
+  var geoLocator = Geolocator();
 
 // Icons
-BitmapDescriptor? activeNearbyIcon;
+  BitmapDescriptor? activeNearbyIcon;
 
 // Database and References
-DatabaseReference? referenceRideRequest;
+  DatabaseReference? referenceRideRequest;
 
 // Ride Status
-String driverRideStatus = "Driver is Coming";
-String userRideRequestStatus = "";
+  String driverRideStatus = "Driver is Coming";
+  String userRideRequestStatus = "";
+  String availableTicketID = "";
+  Ticket? ticket;
   // end of variables
 
   checkIfLocationPermissionAllowed() async {
@@ -100,6 +106,7 @@ String userRideRequestStatus = "";
           textColor: Colors.white,
           fontSize: 16.0);
     }
+    notifyListeners();
   }
 
   locateUserPosition() async {
@@ -123,6 +130,7 @@ String userRideRequestStatus = "";
     userEmail = userModelCurrentInfo!.email!;
 
     initializeGeoFireListener();
+    notifyListeners();
   }
 
   void updatePickUpLocationAddress(Directions userPickUpAddress) {
@@ -135,79 +143,16 @@ String userRideRequestStatus = "";
     notifyListeners();
   }
 
-  void checkAvailableTickets(GeoPoint userDestination, GeoPoint userOrigin) {
-    // compare the destenation of the user with the destenation of the tickets
-
-    try {
-      log("userDestination: ${userDestination.latitude} , ${userDestination.longitude}");
-      log("userOrigin: ${userOrigin.latitude} , ${userOrigin.longitude}");
-      _ticketSnapshot?.cancel();
-      _ticketSnapshot = FirebaseFirestore.instance
-          .collection('Tickets')
-          .snapshots()
-          .listen((event) async {
-        log("event.docs.length: ${event.docs.length}");
-
-        if (event.docs.isNotEmpty) {
-          event.docs.forEach((element) async {
-            // delete all documents
-
-            // delete all tickets that are older than 1 hour
-            if (DateTime.now()
-                    .difference((element.data()['time'] as Timestamp).toDate())
-                    .inHours >
-                1) {
-              await FirebaseFirestore.instance
-                  .collection('Tickets')
-                  .doc(element.id)
-                  .delete();
-              return;
-            }
-
-            // var data = element.data();
-            // if ((data['destination'] as GeoPoint).latitude.toStringAsFixed(4) ==
-            //         userDestination.latitude.toStringAsFixed(4) &&
-            //     (data['destination'] as GeoPoint)
-            //             .longitude
-            //             .toStringAsFixed(4) ==
-            //         userDestination.longitude.toStringAsFixed(4) &&
-            //     Geolocator.distanceBetween(
-            //                 (data['origin'] as GeoPoint).latitude,
-            //                 (data['origin'] as GeoPoint).longitude,
-            //                 userOrigin.latitude,
-            //                 userOrigin.longitude) /
-            //             1000 <
-            //         1) tickets.add(Ticket.fromMap(element.data(), element.id));
-            // log("tickets: ${tickets.length}");
-
-            // print(element.data());
-          });
-        }
-        // if (tickets.isEmpty) {
-        //   Fluttertoast.showToast(
-        //       msg: "No tickets available",
-        //       toastLength: Toast.LENGTH_SHORT,
-        //       gravity: ToastGravity.BOTTOM,
-        //       timeInSecForIosWeb: 1,
-        //       backgroundColor: Colors.purple,
-        //       textColor: Colors.white,
-        //       fontSize: 16.0);
-        // }
-
-        notifyListeners();
-      }) as StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?;
-    } catch (e) {
-      print(e.toString());
-    }
-  }
-
+ 
   initializeGeoFireListener() {
+    log("initializeGeoFireListener");
     Geofire.initialize("activeDrivers");
     Geofire.queryAtLocation(
             userCurrentPosition!.latitude, userCurrentPosition!.longitude, 10)!
         .listen((map) {
+      log("map: $map");
       //5 is the distance in kilometers of any active online drivers along a circle from the center
-      print(map);
+      log(map.toString());
       if (map != null) {
         var callBack = map['callBack'];
 
@@ -259,13 +204,32 @@ String userRideRequestStatus = "";
     });
   }
 
-  displayActiveDriversOnUsersMap() {
+  Future<Uint8List> getBytesFromAsset(String path, int width) async {
+    ByteData data = await rootBundle.load(path);
+    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(),
+        targetWidth: width);
+    ui.FrameInfo fi = await codec.getNextFrame();
+    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!
+        .buffer
+        .asUint8List();
+  }
+
+  displayActiveDriversOnUsersMap() async {
+    log("displayActiveDriversOnUsersMap");
     markersSet.clear();
     circlesSet.clear();
+
+    final Uint8List markerIcon =
+        await getBytesFromAsset('images/car_icon.png', 200);
+
+    // var custom = await BitmapDescriptor.fromAssetImage(
+    //     const ImageConfiguration(devicePixelRatio: 1, size: Size(20, 10)),
+    //     "images/car_icon.png");
 
     Set<Marker> driversMarkerSet = Set<Marker>();
     for (ActiveNearbyAvailableDrivers eachDriver
         in GeoFireAssistant.activeNearbyAvailableDriversList) {
+      log("eachDriver: ${eachDriver.driverId}");
       LatLng eachDriverActivePosition =
           LatLng(eachDriver.locationLatitude!, eachDriver.locationLongitude!);
 
@@ -273,14 +237,15 @@ String userRideRequestStatus = "";
         markerId: MarkerId("driver" + eachDriver.driverId!),
         position: eachDriverActivePosition,
         //icon: activeNearbyIcon!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueMagenta), /////////
+        //car icon
+        icon: BitmapDescriptor.fromBytes(markerIcon),
         rotation: 360,
       );
 
       driversMarkerSet.add(marker);
     }
     markersSet = driversMarkerSet;
+    notifyListeners();
   }
 
   Future<void> drawPolyLineFromOriginToDestination() async {
@@ -524,6 +489,7 @@ String userRideRequestStatus = "";
 
     tripRideRequestInfoStreamSubscription =
         referenceRideRequest!.onValue.listen((eventSnap) {
+      log("eventSnap: ${eventSnap.snapshot.value}");
       if (eventSnap.snapshot.value == null) {
         return;
       }
@@ -560,18 +526,22 @@ String userRideRequestStatus = "";
 
         //status = accepted
         if (userRideRequestStatus == "accepted") {
+          log("userRideRequestStatus: $userRideRequestStatus + accepted");
           updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng);
         }
 
         //status = arrived
         if (userRideRequestStatus == "arrived") {
+          log("userRideRequestStatus: $userRideRequestStatus + arrived");
           driverRideStatus = "Driver has Arrived";
         }
 
         ////status = ontrip
         if (userRideRequestStatus == "ontrip") {
+          log("userRideRequestStatus: $userRideRequestStatus + ontrip");
           updateReachingTimeToUserDropOffLocation(driverCurrentPositionLatLng);
         }
+        notifyListeners();
       }
     });
 
@@ -579,6 +549,7 @@ String userRideRequestStatus = "";
         GeoFireAssistant.activeNearbyAvailableDriversList;
     searchNearestOnlineDrivers();
   }
+
 
   updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng) async {
     if (requestPositionInfo == true) {
@@ -656,40 +627,85 @@ String userRideRequestStatus = "";
     FirebaseDatabase.instance
         .ref()
         .child("drivers")
-        .child(chosenDriverId)
+        .child(chosenDriverId!)
         .child("newRideStatus")
         .set(referenceRideRequest!.key);
 
-    //automate the push notification
+    //automate the push notification system
+    FirebaseDatabase.instance
+        .ref()
+        .child("drivers")
+        .child(chosenDriverId)
+        .child("token")
+        .once()
+        .then((snap) {
+      if (snap.snapshot.value != null) {
+        String deviceRegistrationToken = snap.snapshot.value.toString();
+
+        //send Notification Now
+        AssistantMethods.sendNotificationToDriverNow(
+          deviceRegistrationToken,
+          referenceRideRequest!.key.toString(),
+          navigatorKey.currentContext,
+        );
+
+        Fluttertoast.showToast(msg: "Requesting sent Successfully.");
+      } else {
+        Fluttertoast.showToast(msg: "Please choose another driver.");
+        return;
+      }
+    });
   }
 
+// a lot of data read (needs to fix up)
   retrieveOnlineDriversInformation(List onlineNearestDriversList) async {
+    dList.clear();
     DatabaseReference ref = FirebaseDatabase.instance.ref().child("drivers");
     for (int i = 0; i < onlineNearestDriversList.length; i++) {
       await ref
           .child(onlineNearestDriversList[i].driverId.toString())
-          .once()
+          .get()
           .then((dataSnapShot) {
-        var driverKeyInfo = dataSnapShot.snapshot.value;
-        dList.add(driverKeyInfo);
+        final data = (dataSnapShot.value as Map).cast<String, dynamic>();
+        log("DriverKey Information" + data.toString());
+
+        var driver = Driver(
+            name: data['name'].toString(),
+            email: data['email'].toString(),
+            phone: data['phone'].toString(),
+            id: data['id'].toString(),
+            token: data['token'].toString(),
+            newRideStatus: data['newRideStatus'].toString(),
+            car: Car(
+              car_color: data['car_details']['car_color'].toString(),
+              car_model: data['car_details']['car_model'].toString(),
+              car_number: data['car_details']['car_number'].toString(),
+              type: data['car_details']['type'].toString(),
+            ));
+        dList.add(driver);
+
+        log("car Seats  " + driver.car.seats.toString());
         // print("DriverKey Information"+ dList.toString());
       });
     }
+    notifyListeners();
   }
 
   createActiveNearbyDriverIconMarker() {
     if (activeNearbyIcon == null) {
       ImageConfiguration imageConfiguration = createLocalImageConfiguration(
           navigatorKey.currentContext!,
-          size: const Size(4, 4));
+          size: Size(4, 4));
       BitmapDescriptor.fromAssetImage(imageConfiguration, "images/car.jpg")
           .then((value) {
         activeNearbyIcon = value;
       });
     }
+    notifyListeners();
   }
 
   updateReachingTimeToUserDropOffLocation(driverCurrentPositionLatLng) async {
+
     if (requestPositionInfo == true) {
       requestPositionInfo = false;
 
@@ -715,5 +731,184 @@ String userRideRequestStatus = "";
       requestPositionInfo = true;
       notifyListeners();
     }
+  }
+
+
+
+  // Ticket Stuff 
+
+   ticketMainProcess(){
+    locateUserPosition();
+
+    // 2
+    saveRideRequestInformation();
+    
+    notifyListeners();
+  }
+  joinExistTicket() async {
+    // get the first ticket
+    try {
+      // add the user to the ticket
+
+      if (tickets.first.seats == tickets.first.passengers!.length) {
+        Fluttertoast.showToast(
+            msg: "No seats available for this trip .. Generating new ticket",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.purple,
+            textColor: Colors.white,
+            fontSize: 16.0);
+        return;
+      }
+
+      if (tickets.first.seats! - 1 == tickets.first.passengers!.length) {
+        await FirebaseFirestore.instance
+            .collection('Tickets')
+            .doc(tickets.first.id)
+            .update({'acceptNewPassenger': false});
+      }
+      await FirebaseFirestore.instance
+          .collection('Tickets')
+          .doc(tickets.first.id)
+          .update({
+        'passengers': FieldValue.arrayUnion([
+          Passenger(
+                  name: userModelCurrentInfo!.name!,
+                  phone: userModelCurrentInfo!.phone!,
+                  id: userModelCurrentInfo!.id!,
+                  origin: GeoPoint(userPickUpLocation!.locationLatitude!,
+                      userPickUpLocation!.locationLongitude!),
+                  isPickedUp: false)
+              .toMap()
+        ])
+      }).then((value) {
+        ticket = tickets.first;
+        Fluttertoast.showToast(
+            msg: "You have joined the ticket successfully",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.purple,
+            textColor: Colors.white,
+            fontSize: 16.0);
+      });
+      notifyListeners();
+    } on Exception catch (e) {
+      log(e.toString());
+      // TODO
+    }
+  }
+
+ singleTicketUI() {
+    return Card(
+      child: ListTile(
+        title: Text(
+            "Ticket ID: ${ticket!.id} \nSeats: ${ticket!.seats! - ticket!.passengers!.length} "),
+        subtitle: Text(
+            "Origin: Your Current Location ! \nDestination: ${ticket!.humanReadableDestination}"),
+        trailing: TextButton(
+          onPressed: () async {},
+          child: Text("Cancel"),
+        ),
+      ),
+    );
+  }
+
+  resignFromTicket() {
+    FirebaseFirestore.instance.collection('Tickets').doc(ticket!.id).update({
+      'passengers': FieldValue.arrayRemove([
+        Passenger(
+                name: userModelCurrentInfo!.name!,
+                phone: userModelCurrentInfo!.phone!,
+                id: userModelCurrentInfo!.id!,
+                origin: GeoPoint(userPickUpLocation!.locationLatitude!,
+                    userPickUpLocation!.locationLongitude!),
+                isPickedUp: false)
+            .toMap()
+      ])
+    }).then((value) {
+      Fluttertoast.showToast(
+          msg: "You have resigned from the ticket successfully",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.purple,
+          textColor: Colors.white,
+          fontSize: 16.0);
+    });
+  }
+  Future<bool> checkAvailableTickets(
+      GeoPoint userDestination, GeoPoint userOrigin) async {
+    // compare the destenation of the user with the destenation of the tickets
+    var isThereTicket = false;
+
+    try {
+      log("userDestination: ${userDestination.latitude} , ${userDestination.longitude}");
+      log("userOrigin: ${userOrigin.latitude} , ${userOrigin.longitude}");
+
+      _ticketSnapshot?.cancel();
+      _ticketSnapshot = FirebaseFirestore.instance
+          .collection('Tickets')
+          .snapshots()
+          .listen((event) async {
+        log("event.docs.length: ${event.docs.length}");
+
+        if (event.docs.isNotEmpty) {
+          event.docs.forEach((element) async {
+            // delete all tickets that are older than 15 mins
+            if (DateTime.now()
+                    .difference((element.data()['time'] as Timestamp).toDate())
+                    .inMinutes >
+                15) {
+              await FirebaseFirestore.instance
+                  .collection('Tickets')
+                  .doc(element.id)
+                  .delete();
+              return;
+            }
+
+            var data = element.data();
+            if ((data['destination'] as GeoPoint).latitude.toStringAsFixed(4) ==
+                    userDestination.latitude.toStringAsFixed(4) &&
+                (data['destination'] as GeoPoint)
+                        .longitude
+                        .toStringAsFixed(4) ==
+                    userDestination.longitude.toStringAsFixed(4) &&
+                Geolocator.distanceBetween(
+                            (data['origin'] as GeoPoint).latitude,
+                            (data['origin'] as GeoPoint).longitude,
+                            userOrigin.latitude,
+                            userOrigin.longitude) /
+                        1000 <
+                    1 &&
+                data['acceptNewPassenger'] == true)
+              tickets.add(Ticket.fromMap(element.data(), element.id));
+            log("tickets: ${tickets.length}");
+          });
+        }
+        if (tickets.isEmpty) {
+          isThereTicket = false;
+          Fluttertoast.showToast(
+              msg:
+                  "No tickets available for this trip .. Generating new ticket",
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.BOTTOM,
+              timeInSecForIosWeb: 1,
+              backgroundColor: Colors.purple,
+              textColor: Colors.white,
+              fontSize: 16.0);
+        } else {
+          isThereTicket = true;
+        }
+
+        notifyListeners();
+      }) as StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?;
+
+      return Future.value(isThereTicket);
+    } catch (e) {
+      print(e.toString());
+    }
+    return Future.value(isThereTicket);
   }
 }

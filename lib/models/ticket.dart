@@ -7,6 +7,9 @@ class Ticket {
   List<Passenger>? passengers;
   String? status;
   String? id;
+  int? seats;
+  bool? acceptNewPassenger;
+  String? humanReadableDestination;
 
   Ticket({
     required this.time,
@@ -15,6 +18,9 @@ class Ticket {
     required this.status,
     required this.id,
     required this.origin,
+    required this.seats,
+    required this.acceptNewPassenger,
+    required this.humanReadableDestination,
   });
 
   Ticket.fromMap(Map<String, dynamic> data, String documentId) {
@@ -29,6 +35,9 @@ class Ticket {
     status = data['status'];
     id = documentId;
     origin = data['origin'];
+    seats = data['seats'];
+    acceptNewPassenger = data['acceptNewPassenger'];
+    humanReadableDestination = data['humanReadableDestination'];
   }
 
   Map<String, dynamic> toMap() {
@@ -39,6 +48,9 @@ class Ticket {
       'status': status,
       'id': id,
       'origin': origin,
+      'seats': seats,
+      'acceptNewPassenger': acceptNewPassenger,
+      'humanReadableDestination': humanReadableDestination,
     };
   }
 }

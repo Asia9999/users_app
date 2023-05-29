@@ -1,3 +1,4 @@
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
 class Driver {
@@ -7,6 +8,7 @@ class Driver {
   String id;
   String token;
   String newRideStatus;
+  Car car;
 
   Driver({
     required this.name,
@@ -15,6 +17,7 @@ class Driver {
     required this.id,
     required this.token,
     required this.newRideStatus,
+    required this.car,
   });
 
   factory Driver.fromJson(Map<String, dynamic> json) {
@@ -25,6 +28,7 @@ class Driver {
       id: json['id'],
       token: json['token'],
       newRideStatus: json['newRideStatus'],
+      car: Car.fromJson(json['car_details']),
     );
   }
 
@@ -50,7 +54,21 @@ class Car {
       required this.car_color,
       required this.car_number,
       required this.type,
-      this.seats});
+      this.seats}) {
+    switch (type) {
+      case 'car-3seats':
+        seats = 3;
+        break;
+      case 'car-6seats':
+        seats = 6;
+        break;
+      case 'car-9seats':
+        seats = 9;
+        break;
+      default:
+        seats = 3;
+    }
+  }
 
   factory Car.fromJson(Map<String, dynamic> json) {
     int _seats = 0;
@@ -76,8 +94,6 @@ class Car {
       seats: _seats,
     );
   }
-
-
 
   Map<String, dynamic> toJson() => {
         'car_model': car_model,

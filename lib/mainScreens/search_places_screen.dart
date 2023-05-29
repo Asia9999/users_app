@@ -4,42 +4,35 @@ import 'package:users_app/global/map_key.dart';
 import 'package:users_app/models/predicted_places.dart';
 import 'package:users_app/widgets/place_prediction_tile.dart';
 
-//import '../widgets/place_prediction_tile.dart';
-//import 'package:users_app/widgets/place_prediction_tile.dart';
 
-
-class SearchPlacesScreen extends StatefulWidget
-{
-
+class SearchPlacesScreen extends StatefulWidget {
   @override
   _SearchPlacesScreenState createState() => _SearchPlacesScreenState();
 }
 
-
-
-
-class _SearchPlacesScreenState extends State<SearchPlacesScreen>
-{
+class _SearchPlacesScreenState extends State<SearchPlacesScreen> {
   List<PredictedPlaces> placesPredictedList = [];
 
-  void findPlaceAutoCompleteSearch(String inputText) async
-  {
-    if(inputText.length > 1) //2 or more than 2 input characters
-        {
-      String urlAutoCompleteSearch = "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$inputText&key=$mapKey&components=country:SA";
+  void findPlaceAutoCompleteSearch(String inputText) async {
+    if (inputText.length > 1) //2 or more than 2 input characters
+    {
+      String urlAutoCompleteSearch =
+          "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$inputText&key=$mapKey&components=country:EG";
 
-      var responseAutoCompleteSearch = await RequestAssistant.receiveRequest(urlAutoCompleteSearch);
+      var responseAutoCompleteSearch =
+          await RequestAssistant.receiveRequest(urlAutoCompleteSearch);
 
-      if(responseAutoCompleteSearch == "Error Occurred, Failed. No Response.")
-      {
+      if (responseAutoCompleteSearch ==
+          "Error Occurred, Failed. No Response.") {
         return;
       }
 
-      if(responseAutoCompleteSearch["status"] == "OK")
-      {
+      if (responseAutoCompleteSearch["status"] == "OK") {
         var placePredictions = responseAutoCompleteSearch["predictions"];
 
-        var placePredictionsList = (placePredictions as List).map((jsonData) => PredictedPlaces.fromJson(jsonData)).toList();
+        var placePredictionsList = (placePredictions as List)
+            .map((jsonData) => PredictedPlaces.fromJson(jsonData))
+            .toList();
 
         setState(() {
           placesPredictedList = placePredictionsList;
@@ -49,8 +42,7 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen>
   }
 
   @override
-  Widget build(BuildContext context)
-  {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -60,8 +52,7 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen>
             height: 160,
             decoration: const BoxDecoration(
               color: Colors.purple,
-              boxShadow:
-              [
+              boxShadow: [
                 BoxShadow(
                   color: Colors.white54,
                   blurRadius: 8,
@@ -77,15 +68,11 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen>
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 children: [
-
                   const SizedBox(height: 25.0),
-
                   Stack(
                     children: [
-
                       GestureDetector(
-                        onTap: ()
-                        {
+                        onTap: () {
                           Navigator.pop(context);
                         },
                         child: const Icon(
@@ -93,7 +80,6 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen>
                           color: Colors.grey,
                         ),
                       ),
-
                       const Center(
                         child: Text(
                           "Search & Set DropOff Location",
@@ -106,25 +92,21 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen>
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 16.0),
-
                   Row(
                     children: [
-
                       const Icon(
                         Icons.adjust_sharp,
                         color: Colors.grey,
                       ),
-
-                      const SizedBox(width: 18.0,),
-
+                      const SizedBox(
+                        width: 18.0,
+                      ),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: TextField(
-                            onChanged: (valueTyped)
-                            {
+                            onChanged: (valueTyped) {
                               findPlaceAutoCompleteSearch(valueTyped);
                             },
                             decoration: const InputDecoration(
@@ -141,7 +123,6 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen>
                           ),
                         ),
                       ),
-
                     ],
                   ),
                 ],
@@ -152,25 +133,23 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen>
           //display place predictions result
           (placesPredictedList.length > 0)
               ? Expanded(
-            child: ListView.separated(
-              itemCount: placesPredictedList.length,
-              physics: ClampingScrollPhysics(),
-              itemBuilder: (context, index)
-              {
-                return PlacePredictionTileDesign(
-                  predictedPlaces: placesPredictedList[index],
-                );
-              },
-              separatorBuilder: (BuildContext context, int index)
-              {
-                return const Divider(
-                  height: 1,
-                  color: Colors.white,
-                  thickness: 1,
-                );
-              },
-            ),
-          )
+                  child: ListView.separated(
+                    itemCount: placesPredictedList.length,
+                    physics: ClampingScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return PlacePredictionTileDesign(
+                        predictedPlaces: placesPredictedList[index],
+                      );
+                    },
+                    separatorBuilder: (BuildContext context, int index) {
+                      return const Divider(
+                        height: 1,
+                        color: Colors.white,
+                        thickness: 1,
+                      );
+                    },
+                  ),
+                )
               : Container(),
         ],
       ),
