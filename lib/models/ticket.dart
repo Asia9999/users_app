@@ -7,6 +7,7 @@ class Ticket {
   List<Passenger>? passengers;
   String? status;
   String? id;
+  String? driverId;
   int? seats;
   bool? acceptNewPassenger;
   String? humanReadableDestination;
@@ -36,6 +37,7 @@ class Ticket {
     id = documentId;
     origin = data['origin'];
     seats = data['seats'];
+    driverId = data['driverId'];
     acceptNewPassenger = data['acceptNewPassenger'];
     humanReadableDestination = data['humanReadableDestination'];
   }
@@ -51,6 +53,7 @@ class Ticket {
       'seats': seats,
       'acceptNewPassenger': acceptNewPassenger,
       'humanReadableDestination': humanReadableDestination,
+      'driverId': driverId ?? "00",
     };
   }
 }

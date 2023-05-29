@@ -236,6 +236,7 @@ class _MainsScreenState extends State<MainsScreen> {
                           child: const Text("Requeest a Ride"),
                           onPressed: () {
                             if (value.userDropOffLocation != null) {
+                              value.ticketMainProcess();
                               value.saveRideRequestInformation();
                             } else {
                               Fluttertoast.showToast(
