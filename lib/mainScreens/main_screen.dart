@@ -237,7 +237,7 @@ class _MainsScreenState extends State<MainsScreen> {
                           onPressed: () {
                             if (value.userDropOffLocation != null) {
                               value.ticketMainProcess();
-                              value.saveRideRequestInformation();
+                              // value.saveRideRequestInformation();
                             } else {
                               Fluttertoast.showToast(
                                   msg: "Please select destionation location");
@@ -254,162 +254,11 @@ class _MainsScreenState extends State<MainsScreen> {
                 ),
               ),
             ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: value.waitingResponseFromDriverContainerHeight,
-                decoration: const BoxDecoration(
-                  color: Colors.white38,
-                  borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    topLeft: Radius.circular(20),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Center(
-                    child: AnimatedTextKit(
-                      animatedTexts: [
-                        FadeAnimatedText(
-                          'Waiting for Response\nfrom Driver',
-                          duration: const Duration(seconds: 6),
-                          textAlign: TextAlign.center,
-                          textStyle: const TextStyle(
-                              fontSize: 30.0,
-                              color: Colors.purpleAccent,
-                              fontWeight: FontWeight.bold),
-                        ),
-                        ScaleAnimatedText(
-                          'Please wait...',
-                          duration: const Duration(seconds: 10),
-                          textAlign: TextAlign.center,
-                          textStyle: const TextStyle(
-                              fontSize: 32.0,
-                              color: Colors.purpleAccent,
-                              fontFamily: 'Canterbury'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+           
 
             //ui for displaying assigned driver information
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: value.assignedDriverInfoContainerHeight,
-                decoration: const BoxDecoration(
-                  color: Colors.white38,
-                  borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    topLeft: Radius.circular(20),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 20,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      //status of ride
-                      Center(
-                        child: Text(
-                          value.driverRideStatus,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.purpleAccent,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(
-                        height: 20.0,
-                      ),
-
-                      const Divider(
-                        height: 2,
-                        thickness: 2,
-                        color: Colors.purpleAccent,
-                      ),
-
-                      const SizedBox(
-                        height: 20.0,
-                      ),
-
-                      //driver vehicle details
-                      Text(
-                        driverCarDetails,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.purpleAccent,
-                        ),
-                      ),
-
-                      const SizedBox(
-                        height: 2.0,
-                      ),
-
-                      //driver name
-                      Text(
-                        driverName,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purpleAccent,
-                        ),
-                      ),
-
-                      const SizedBox(
-                        height: 20.0,
-                      ),
-
-                      const Divider(
-                        height: 2,
-                        thickness: 2,
-                        color: Colors.purpleAccent,
-                      ),
-
-                      const SizedBox(
-                        height: 20.0,
-                      ),
-
-                      //call driver button
-                      Center(
-                        child: ElevatedButton.icon(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            primary: Colors.purple,
-                          ),
-                          icon: const Icon(
-                            Icons.phone_android,
-                            color: Colors.white38,
-                            size: 22,
-                          ),
-                          label: const Text(
-                            "Call Driver",
-                            style: TextStyle(
-                              color: Colors.purpleAccent,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+         
+            value.ticketInfoWidget
           ],
         ),
       ),

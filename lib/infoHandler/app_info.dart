@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'dart:typed_data';
 
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/cupertino.dart';
@@ -89,6 +90,7 @@ class AppInfo extends ChangeNotifier {
   String availableTicketID = "";
   Ticket? ticket;
   Driver? ticketDriver;
+  String? timeToArrive;
   // end of variables
 
   checkIfLocationPermissionAllowed() async {
@@ -233,8 +235,30 @@ class AppInfo extends ChangeNotifier {
     for (ActiveNearbyAvailableDrivers eachDriver
         in GeoFireAssistant.activeNearbyAvailableDriversList) {
       log("eachDriver: ${eachDriver.driverId}");
+
       LatLng eachDriverActivePosition =
           LatLng(eachDriver.locationLatitude!, eachDriver.locationLongitude!);
+
+      if (ticketDriver != null && eachDriver.driverId == ticketDriver!.id) {
+        updateArrivalTimeToUserPickupLocation(eachDriverActivePosition);
+      }
+
+      if (ticket != null && ticket!.driverId == eachDriver.driverId) {
+        var passenger = ticket!.passengers!
+            .where((element) => element.id == userModelCurrentInfo!.id)
+            .first;
+
+        if (passenger.isPickedUp == true) {
+          timeToArrive =
+              await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+            LatLng(eachDriver.locationLatitude!, eachDriver.locationLongitude!),
+            LatLng(userDropOffLocation!.locationLatitude!,
+                userDropOffLocation!.locationLongitude!),
+          ).then((value) => value!.duration_text.toString());
+
+          showUIForStartedTrip();
+        }
+      }
 
       Marker marker = Marker(
         markerId: MarkerId("driver" + eachDriver.driverId!),
@@ -372,6 +396,8 @@ class AppInfo extends ChangeNotifier {
 
   searchNearestOnlineDrivers() async {
     // no active driver available
+
+    await saveRideRequestInformation();
     if (onlineNearbyAvailableDriversList.length == 0) {
       //cancel the RideRequest information
 
@@ -398,96 +424,368 @@ class AppInfo extends ChangeNotifier {
                 referenceRideRequest: referenceRideRequest)));
 
     if (response == "driverChoosed") {
+      //send notification to that specific driver
+      sendNotificationToDriverNow(chosenDriverId!);
+      showWaitingResponseFromDriverUI();
+      log("chosenDriverId: $chosenDriverId");
+
+      //Response from a Driver
       FirebaseDatabase.instance
           .ref()
           .child("drivers")
           .child(chosenDriverId!)
-          .once()
-          .then((snap) {
-        if (snap.snapshot.value != null) {
-          //send notification to that specific driver
-          sendNotificationToDriverNow(chosenDriverId!);
-          showWaitingResponseFromDriverUI();
+          .onValue
+          .listen((eventSnapshot) {
+        //1. driver has cancel the rideRequest :: Push Notification
+        // (newRideStatus = idle)
+        if ((eventSnapshot.snapshot.value as Map)['newRideStatus'] == "idle") {
+          Fluttertoast.showToast(
+              msg:
+                  "The driver has cancelled your request , Please choose another driver.");
 
-          //Response from a Driver
-          FirebaseDatabase.instance
-              .ref()
-              .child("drivers")
-              .child(chosenDriverId!)
-              .onValue
-              .listen((eventSnapshot) {
-            //1. driver has cancel the rideRequest :: Push Notification
-            // (newRideStatus = idle)
-            if ((eventSnapshot.snapshot.value as Map)['newRideStatus'] ==
-                "idle") {
-              Fluttertoast.showToast(
-                  msg:
-                      "The driver has cancelled your request , Please choose another driver.");
-
-              Future.delayed(const Duration(milliseconds: 3000), () {
-                Fluttertoast.showToast(msg: "Please Restart App Now.");
-              });
-            }
-
-            //2. driver has accept the rideRequest :: Push Notification
-            // (newRideStatus = accepted)
-            if ((eventSnapshot.snapshot.value as Map)['newRideStatus'] ==
-                "accepted") {
-              //design and display ui for displaying assigned driver information
-
-              // assign driver information to the user
-              ticketDriver = Driver(
-                  name:
-                      (eventSnapshot.snapshot.value as Map)['name'].toString(),
-                  email:
-                      (eventSnapshot.snapshot.value as Map)['email'].toString(),
-                  phone:
-                      (eventSnapshot.snapshot.value as Map)['phone'].toString(),
-                  id: (eventSnapshot.snapshot.value as Map)['id'].toString(),
-                  token:
-                      (eventSnapshot.snapshot.value as Map)['token'].toString(),
-                  newRideStatus:
-                      (eventSnapshot.snapshot.value as Map)['newRideStatus']
-                          .toString(),
-                  car: Car(
-                    car_color: (eventSnapshot.snapshot.value
-                            as Map)['car_details']['car_color']
-                        .toString(),
-                    car_model: (eventSnapshot.snapshot.value
-                            as Map)['car_details']['car_model']
-                        .toString(),
-                    car_number: (eventSnapshot.snapshot.value
-                            as Map)['car_details']['car_number']
-                        .toString(),
-                    type: (eventSnapshot.snapshot.value as Map)['car_details']
-                            ['type']
-                        .toString(),
-                  ));
-              log("ticketDriver: $ticketDriver");
-
-              showUIForAssignedDriverInfo();
-            }
-            notifyListeners();
+          Future.delayed(const Duration(milliseconds: 3000), () {
+            Fluttertoast.showToast(msg: "Please Restart App Now.");
           });
-        } else {
-          Fluttertoast.showToast(msg: "This driver do not exist. Try again.");
         }
+
+        //2. driver has accept the rideRequest :: Push Notification
+        // (newRideStatus = accepted)
+        if ((eventSnapshot.snapshot.value as Map)['newRideStatus'] ==
+            "accepted") {
+          //design and display ui for displaying assigned driver information
+
+          // assign driver information to the user
+          ticketDriver = Driver(
+              name: (eventSnapshot.snapshot.value as Map)['name'].toString(),
+              email: (eventSnapshot.snapshot.value as Map)['email'].toString(),
+              phone: (eventSnapshot.snapshot.value as Map)['phone'].toString(),
+              id: (eventSnapshot.snapshot.value as Map)['id'].toString(),
+              token: (eventSnapshot.snapshot.value as Map)['token'].toString(),
+              newRideStatus:
+                  (eventSnapshot.snapshot.value as Map)['newRideStatus']
+                      .toString(),
+              car: Car(
+                car_color: (eventSnapshot.snapshot.value as Map)['car_details']
+                        ['car_color']
+                    .toString(),
+                car_model: (eventSnapshot.snapshot.value as Map)['car_details']
+                        ['car_model']
+                    .toString(),
+                car_number: (eventSnapshot.snapshot.value as Map)['car_details']
+                        ['car_number']
+                    .toString(),
+                type: (eventSnapshot.snapshot.value as Map)['car_details']
+                        ['type']
+                    .toString(),
+              ));
+
+          log("ticket Data" + ticket!.toMap().toString());
+
+          FirebaseFirestore.instance
+              .collection('Tickets')
+              .doc(ticket!.id)
+              .update({
+            "driverId": ticketDriver!.id,
+            "status": "collecting",
+            "seats": ticketDriver!.car.seats,
+            "acceptNewPassenger": true,
+          });
+
+          log("ticketDriver: ${ticketDriver!.toJson()}");
+
+          showUIForAssignedDriverInfo();
+        }
+        notifyListeners();
       });
+    } else {
+      Fluttertoast.showToast(msg: "This driver do not exist. Try again.");
     }
   }
 
   showUIForAssignedDriverInfo() {
-    waitingResponseFromDriverContainerHeight = 0;
     searchLocationContainerHeight = 0;
-    assignedDriverInfoContainerHeight = 240;
+
+    ticketInfoWidget = Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        height: 240,
+        decoration: const BoxDecoration(
+          color: Colors.white38,
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(20),
+            topLeft: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              //status of ride
+              Center(
+                child: Text(
+                  driverRideStatus,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purpleAccent,
+                  ),
+                ),
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              const Divider(
+                height: 2,
+                thickness: 2,
+                color: Colors.purpleAccent,
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              //driver vehicle details
+              Text(
+                ticketDriver!.car.car_color +
+                    " " +
+                    ticketDriver!.car.car_model +
+                    " " +
+                    ticketDriver!.car.car_number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.purpleAccent,
+                ),
+              ),
+
+              const SizedBox(
+                height: 2.0,
+              ),
+
+              //driver name
+              Text(
+                ticketDriver!.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purpleAccent,
+                ),
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              const Divider(
+                height: 2,
+                thickness: 2,
+                color: Colors.purpleAccent,
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              //call driver button
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    //call driver
+
+                    // launch("tel://+1 555 555 5555");
+                  },
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.purple,
+                  ),
+                  icon: const Icon(
+                    Icons.phone_android,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                  label: const Text(
+                    "Call Driver",
+                    style: TextStyle(
+                      color: Colors.purpleAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    notifyListeners();
   }
 
   showWaitingResponseFromDriverUI() {
     searchLocationContainerHeight = 0;
-    waitingResponseFromDriverContainerHeight = 220;
+    ticketInfoWidget = Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        height: 260,
+        decoration: const BoxDecoration(
+          color: Colors.white38,
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(20),
+            topLeft: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Center(
+            child: AnimatedTextKit(
+              animatedTexts: [
+                FadeAnimatedText(
+                  'Waiting for Response\nfrom Driver',
+                  duration: const Duration(seconds: 6),
+                  textAlign: TextAlign.center,
+                  textStyle: const TextStyle(
+                      fontSize: 30.0,
+                      color: Colors.purpleAccent,
+                      fontWeight: FontWeight.bold),
+                ),
+                ScaleAnimatedText(
+                  'Please wait...',
+                  duration: const Duration(seconds: 10),
+                  textAlign: TextAlign.center,
+                  textStyle: const TextStyle(
+                      fontSize: 32.0,
+                      color: Colors.purpleAccent,
+                      fontFamily: 'Canterbury'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    notifyListeners();
   }
 
-  saveRideRequestInformation() {
+  showUIForStartedTrip() {
+    searchLocationContainerHeight = 0;
+    ticketInfoWidget = Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        height: 240,
+        decoration: const BoxDecoration(
+          color: Colors.white38,
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(20),
+            topLeft: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              //status of ride
+              Center(
+                child: Text(
+                  (timeToArrive! + " to Arrive") ?? "About to Arrive",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purpleAccent,
+                  ),
+                ),
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              const Divider(
+                height: 2,
+                thickness: 2,
+                color: Colors.purpleAccent,
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              //driver vehicle details
+              Text(
+                ticketDriver!.car.car_color +
+                    " " +
+                    ticketDriver!.car.car_model +
+                    " " +
+                    ticketDriver!.car.car_number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.purpleAccent,
+                ),
+              ),
+
+              const SizedBox(
+                height: 2.0,
+              ),
+
+              //driver name
+              Text(
+                ticketDriver!.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purpleAccent,
+                ),
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              const Divider(
+                height: 2,
+                thickness: 2,
+                color: Colors.purpleAccent,
+              ),
+
+              const SizedBox(
+                height: 20.0,
+              ),
+
+              //call driver button
+              Text(
+                "To: " + userDropOffLocation!.locationName!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purpleAccent,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    notifyListeners();
+  }
+
+  saveRideRequestInformation() async {
     //save the RideRequest information
     // 1
 
@@ -521,69 +819,7 @@ class AppInfo extends ChangeNotifier {
       "driverId": "waiting",
     };
 
-    referenceRideRequest!.set(userInformationMap);
-
-    tripRideRequestInfoStreamSubscription =
-        referenceRideRequest!.onValue.listen((eventSnap) {
-      log("eventSnap: ${eventSnap.snapshot.value}");
-      if (eventSnap.snapshot.value == null) {
-        return;
-      }
-
-      if ((eventSnap.snapshot.value as Map)["car_details"] != null) {
-        driverCarDetails =
-            (eventSnap.snapshot.value as Map)["car_details"].toString();
-      }
-
-      if ((eventSnap.snapshot.value as Map)["driverPhone"] != null) {
-        driverPhone =
-            (eventSnap.snapshot.value as Map)["driverPhone"].toString();
-      }
-
-      if ((eventSnap.snapshot.value as Map)["driverName"] != null) {
-        driverName = (eventSnap.snapshot.value as Map)["driverName"].toString();
-      }
-
-      if ((eventSnap.snapshot.value as Map)["status"] != null) {
-        userRideRequestStatus =
-            (eventSnap.snapshot.value as Map)["status"].toString();
-      }
-
-      if ((eventSnap.snapshot.value as Map)["driverLocation"] != null) {
-        double driverCurrentPositionLat = double.parse(
-            (eventSnap.snapshot.value as Map)["driverLocation"]["latitude"]
-                .toString());
-        double driverCurrentPositionLng = double.parse(
-            (eventSnap.snapshot.value as Map)["driverLocation"]["longitude"]
-                .toString());
-
-        LatLng driverCurrentPositionLatLng =
-            LatLng(driverCurrentPositionLat, driverCurrentPositionLng);
-
-        //status = accepted
-        if (userRideRequestStatus == "accepted") {
-          log("userRideRequestStatus: $userRideRequestStatus + accepted");
-          updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng);
-        }
-
-        //status = arrived
-        if (userRideRequestStatus == "arrived") {
-          log("userRideRequestStatus: $userRideRequestStatus + arrived");
-          driverRideStatus = "Driver has Arrived";
-        }
-
-        ////status = ontrip
-        if (userRideRequestStatus == "ontrip") {
-          log("userRideRequestStatus: $userRideRequestStatus + ontrip");
-          updateReachingTimeToUserDropOffLocation(driverCurrentPositionLatLng);
-        }
-        notifyListeners();
-      }
-    });
-
-    onlineNearbyAvailableDriversList =
-        GeoFireAssistant.activeNearbyAvailableDriversList;
-    searchNearestOnlineDrivers();
+    await referenceRideRequest!.set(userInformationMap);
   }
 
   updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng) async {
@@ -606,6 +842,17 @@ class AppInfo extends ChangeNotifier {
       driverRideStatus = "Driver is Coming :: " +
           directionDetailsInfo.duration_text.toString();
 
+      if (ticket != null && ticket!.driverId == ticketDriver!.id) {
+        var passenger = ticket!.passengers!
+            .where((element) => element.id == userModelCurrentInfo!.id)
+            .first;
+        if (passenger.isPickedUp == false) {
+          showUIForAssignedDriverInfo();
+        }
+      }
+
+      log("driverRideStatus: $driverRideStatus");
+
       requestPositionInfo = true;
 
       notifyListeners();
@@ -622,36 +869,6 @@ class AppInfo extends ChangeNotifier {
     // };
 
     // referenceRideRequest!.set(userInformationMap);
-
-    // onlineNearbyAvailableDriversList =
-    //     GeoFireAssistant.activeNearbyAvailableDriversList;
-
-    // FirebaseFirestore.instance
-    //     .collection('Tickets')
-    //     .add(Ticket(
-    //             time: Timestamp.now(),
-    //             destination: GeoPoint(24.7557919, 46.6325296),
-    //             passengers: [
-    //               Passenger(
-    //                   name: "name",
-    //                   phone: "phone",
-    //                   id: "id",
-    //                   origin: GeoPoint(24.689676, 46.683228),
-    //                   isPickedUp: false)
-    //             ],
-    //             status: "status",
-    //             id: "id",
-    //             origin: GeoPoint(24.689676, 46.683228))
-    //         .toMap())
-    //     .then((value) {
-    //   log("value.docs.length: ${value.id}");
-    // });
-
-    // checkAvailableTickets(
-    //     GeoPoint(destinationLocation.locationLatitude!,
-    //         destinationLocation.locationLongitude!),
-    //     GeoPoint(originLocation.locationLatitude!,
-    //         originLocation.locationLongitude!));
 
     // searchNearestOnlineDrivers();
   }
@@ -692,7 +909,6 @@ class AppInfo extends ChangeNotifier {
     });
   }
 
-// a lot of data read (needs to fix up)
   retrieveOnlineDriversInformation(List onlineNearestDriversList) async {
     dList.clear();
     DatabaseReference ref = FirebaseDatabase.instance.ref().child("drivers");
@@ -770,26 +986,13 @@ class AppInfo extends ChangeNotifier {
   // Ticket Stuff
 
   ticketMainProcess() async {
-    // check if there is available tickets
-
-    // Loading Dialog
-    showDialog(
-      context: navigatorKey.currentContext!,
-      builder: (BuildContext context) => ProgressDialog(
-        message: "Please wait...",
-      ),
-    );
-
-    Future.delayed(const Duration(milliseconds: 3000), () {
-      Navigator.pop(navigatorKey.currentContext!);
-    });
+    // check if there is available ticket
 
     var isAvailable = await checkAvailableTickets(
         GeoPoint(userDropOffLocation!.locationLatitude!,
             userDropOffLocation!.locationLongitude!),
         GeoPoint(userPickUpLocation!.locationLatitude!,
             userPickUpLocation!.locationLongitude!));
-    // Dismiss Dialog
 
     // create a new ticket if there is no available tickets
     //
@@ -806,16 +1009,15 @@ class AppInfo extends ChangeNotifier {
     } else {
       await joinExistTicket();
     }
-
-    subscribeToTicket(ticket!);
-
-    // saveRideRequestInformation();
   }
 
   joinExistTicket() async {
     // get the first ticket
     try {
       // add the user to the ticket
+      onlineNearbyAvailableDriversList =
+          GeoFireAssistant.activeNearbyAvailableDriversList;
+      await retrieveOnlineDriversInformation(onlineNearbyAvailableDriversList);
 
       if (tickets.first.seats == tickets.first.passengers!.length) {
         Fluttertoast.showToast(
@@ -849,8 +1051,17 @@ class AppInfo extends ChangeNotifier {
                   isPickedUp: false)
               .toMap()
         ])
-      }).then((value) {
+      }).then((value) async {
         ticket = tickets.first;
+
+        // assign driver
+
+        log("ticket Data" + ticket!.toMap().toString());
+        log("dlist" + dList.first.toJson().toString());
+
+        ticketDriver =
+            dList.where((element) => element.id == ticket!.driverId).first;
+
         Fluttertoast.showToast(
             msg: "You have joined the ticket successfully",
             toastLength: Toast.LENGTH_SHORT,
@@ -859,27 +1070,14 @@ class AppInfo extends ChangeNotifier {
             backgroundColor: Colors.purple,
             textColor: Colors.white,
             fontSize: 16.0);
+
+        subscribeToTicket(ticket!);
       });
       notifyListeners();
     } on Exception catch (e) {
       log(e.toString());
       // TODO
     }
-  }
-
-  singleTicketUI() {
-    return Card(
-      child: ListTile(
-        title: Text(
-            "Ticket ID: ${ticket!.id} \nSeats: ${ticket!.seats! - ticket!.passengers!.length} "),
-        subtitle: Text(
-            "Origin: Your Current Location ! \nDestination: ${ticket!.humanReadableDestination}"),
-        trailing: TextButton(
-          onPressed: () async {},
-          child: Text("Cancel"),
-        ),
-      ),
-    );
   }
 
   resignFromTicket() {
@@ -895,6 +1093,7 @@ class AppInfo extends ChangeNotifier {
             .toMap()
       ])
     }).then((value) {
+      _ticketSnapshot!.cancel();
       Fluttertoast.showToast(
           msg: "You have resigned from the ticket successfully",
           toastLength: Toast.LENGTH_SHORT,
@@ -907,51 +1106,57 @@ class AppInfo extends ChangeNotifier {
   }
 
   createNewTicket() async {
-    ticket = Ticket(
-        time: Timestamp.now(),
-        destination: GeoPoint(userDropOffLocation!.locationLatitude!,
-            userDropOffLocation!.locationLongitude!),
-        passengers: [
-          Passenger(
-              name: userModelCurrentInfo!.name!,
-              phone: userModelCurrentInfo!.phone!,
-              id: userModelCurrentInfo!.id!,
-              origin: GeoPoint(userPickUpLocation!.locationLatitude!,
-                  userPickUpLocation!.locationLongitude!),
-              isPickedUp: false)
-        ],
-        status: "Pending",
-        id: "id",
-        origin: GeoPoint(userPickUpLocation!.locationLatitude!,
-            userPickUpLocation!.locationLongitude!),
-        acceptNewPassenger: false,
-        humanReadableDestination: userDropOffLocation!.locationName!,
-        seats: 0);
+    try {
+      ticket = Ticket(
+          time: Timestamp.now(),
+          destination: GeoPoint(userDropOffLocation!.locationLatitude!,
+              userDropOffLocation!.locationLongitude!),
+          passengers: [
+            Passenger(
+                name: userModelCurrentInfo!.name!,
+                phone: userModelCurrentInfo!.phone!,
+                id: userModelCurrentInfo!.id!,
+                origin: GeoPoint(userPickUpLocation!.locationLatitude!,
+                    userPickUpLocation!.locationLongitude!),
+                isPickedUp: false)
+          ],
+          status: "Pending",
+          id: "id",
+          origin: GeoPoint(userPickUpLocation!.locationLatitude!,
+              userPickUpLocation!.locationLongitude!),
+          acceptNewPassenger: false,
+          humanReadableDestination: userDropOffLocation!.locationName!,
+          seats: 0);
 
-    await FirebaseFirestore.instance
-        .collection('Tickets')
-        .add(ticket!.toMap())
-        .then((value) {
-      Fluttertoast.showToast(
-          msg: "You have created a new ticket successfully",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.purple,
-          textColor: Colors.white,
-          fontSize: 16.0);
-    });
+      await FirebaseFirestore.instance
+          .collection('Tickets')
+          .add(ticket!.toMap())
+          .then((value) {
+        ticket!.id = value.id;
+        Fluttertoast.showToast(
+            msg: "You have created a new ticket successfully",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.purple,
+            textColor: Colors.white,
+            fontSize: 16.0);
+        onlineNearbyAvailableDriversList =
+            GeoFireAssistant.activeNearbyAvailableDriversList;
+        searchNearestOnlineDrivers();
+        subscribeToTicket(ticket!);
+      });
+    } on Exception catch (e) {
+      // TODO
+      log(e.toString());
+    }
   }
 
-  sentDriverRequistAndWaitingResponse() {
+  sendDriverRequestAndWaitingResponse() {
     // saveRideRequestInformation();
     // showWaitingResponseFromDriverUI();
 
     try {
-      onlineNearbyAvailableDriversList =
-          GeoFireAssistant.activeNearbyAvailableDriversList;
-      searchNearestOnlineDrivers();
-
       tripRideRequestInfoStreamSubscription =
           referenceRideRequest!.onValue.listen((eventSnap) {
         log("eventSnap: ${eventSnap.snapshot.value}");
@@ -993,7 +1198,26 @@ class AppInfo extends ChangeNotifier {
           //status = accepted
           if (userRideRequestStatus == "accepted") {
             log("userRideRequestStatus: $userRideRequestStatus + accepted");
-            updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng);
+
+            ticketDriver = dList.firstWhere((element) =>
+                element.id ==
+                (eventSnap.snapshot.value as Map)["driverId"].toString());
+
+            FirebaseFirestore.instance
+                .collection('Tickets')
+                .doc(ticket!.id)
+                .update({
+              "driverId": ticketDriver!.id,
+              "status": "collecting",
+              "seats": ticketDriver!.car.seats,
+              "acceptNewPassenger": true,
+            }).then((value) {
+              updateArrivalTimeToUserPickupLocation(
+                  driverCurrentPositionLatLng);
+              showUIForAssignedDriverInfo();
+
+              notifyListeners();
+            });
           }
 
           //status = arrived
@@ -1025,11 +1249,10 @@ class AppInfo extends ChangeNotifier {
       log("userDestination: ${userDestination.latitude} , ${userDestination.longitude}");
       log("userOrigin: ${userOrigin.latitude} , ${userOrigin.longitude}");
 
-      _ticketSnapshot?.cancel();
-      _ticketSnapshot = FirebaseFirestore.instance
+      await FirebaseFirestore.instance
           .collection('Tickets')
-          .snapshots()
-          .listen((event) async {
+          .get()
+          .then((event) async {
         log("event.docs.length: ${event.docs.length}");
 
         if (event.docs.isNotEmpty) {
@@ -1081,7 +1304,7 @@ class AppInfo extends ChangeNotifier {
         }
 
         notifyListeners();
-      }) as StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?;
+      });
 
       return Future.value(isThereTicket);
     } catch (e) {
@@ -1101,77 +1324,11 @@ class AppInfo extends ChangeNotifier {
         if (event.data() != null) {
           var data = event.data()!;
           ticket = Ticket.fromMap(data, event.id);
-          if (ticket!.status == "Pending") {
-            ticketInfoWidget = Positioned(
-              child: Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(5),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      blurRadius: 6.0,
-                      spreadRadius: 0.5,
-                      offset: Offset(0.7, 0.7),
-                    ),
-                  ],
-                ),
-                child: Card(
-                  child: ListTile(
-                    title: Text(
-                        "Ticket ID: ${tick.id} \n Waiting for Driver to Accept the Ticket ..."),
-                    subtitle: Text(
-                        "Origin: Your Current Location ! \nDestination: ${tick.humanReadableDestination}"),
-                    trailing: TextButton(
-                      onPressed: () async {
-                        resignFromTicket();
-                      },
-                      child:
-                          Text("Cancel", style: TextStyle(color: Colors.red)),
-                    ),
-                  ),
-                ),
-              ),
-            );
 
-            notifyListeners();
+          if (ticket!.status == "Pending") {
+            showWaitingResponseFromDriverUI();
           } else if (ticket!.status == 'collecting') {
-            ticketInfoWidget = Positioned(
-              child: Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(5),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      blurRadius: 6.0,
-                      spreadRadius: 0.5,
-                      offset: Offset(0.7, 0.7),
-                    ),
-                  ],
-                ),
-                child: Card(
-                  child: Column(
-                    children: [
-                      Text(
-                          "From: ${userPickUpLocation!.humanReadableAddress} \n To: ${tick.humanReadableDestination}"),
-                      const Divider(),
-                      Text("Driver: "),
-                      const Divider(),
-                      TextButton(
-                        onPressed: () async {
-                          resignFromTicket();
-                        },
-                        child:
-                            Text("Cancel", style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
+            showUIForAssignedDriverInfo();
           } else if (ticket!.status == 'started') {
             ticketInfoWidget = Positioned(
               child: Container(
