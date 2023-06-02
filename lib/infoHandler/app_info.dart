@@ -12,6 +12,7 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:users_app/main.dart';
 import 'package:users_app/models/directions.dart';
 import 'package:users_app/models/driver.dart';
@@ -202,6 +203,15 @@ class AppInfo extends ChangeNotifier {
             activeNearbyDriverKeysLoaded = true;
             displayActiveDriversOnUsersMap();
             break;
+          default:
+            ActiveNearbyAvailableDrivers activeNearbyAvailableDriver =
+                ActiveNearbyAvailableDrivers();
+            activeNearbyAvailableDriver.locationLatitude = map['latitude'];
+            activeNearbyAvailableDriver.locationLongitude = map['longitude'];
+            activeNearbyAvailableDriver.driverId = map['key']; //driver key
+            GeoFireAssistant.updateActiveNearbyAvailableDriverLocation(
+                activeNearbyAvailableDriver);
+            displayActiveDriversOnUsersMap();
         }
       }
 
@@ -240,6 +250,7 @@ class AppInfo extends ChangeNotifier {
           LatLng(eachDriver.locationLatitude!, eachDriver.locationLongitude!);
 
       if (ticketDriver != null && eachDriver.driverId == ticketDriver!.id) {
+        log("1: " + eachDriverActivePosition.toString());
         updateArrivalTimeToUserPickupLocation(eachDriverActivePosition);
       }
 
@@ -479,7 +490,7 @@ class AppInfo extends ChangeNotifier {
                     .toString(),
               ));
 
-          log("ticket Data" + ticket!.toMap().toString());
+          // log("ticket Data" + ticket!.toMap().toString());
 
           FirebaseFirestore.instance
               .collection('Tickets')
@@ -510,7 +521,7 @@ class AppInfo extends ChangeNotifier {
       left: 0,
       right: 0,
       child: Container(
-        height: 240,
+        height: 270,
         decoration: const BoxDecoration(
           color: Colors.white38,
           borderRadius: BorderRadius.only(
@@ -537,6 +548,18 @@ class AppInfo extends ChangeNotifier {
                   ),
                 ),
               ),
+
+              Text(
+                  "Passengers: " +
+                      ticket!.passengers!.length.toString() +
+                      "/" +
+                      ticketDriver!.car.seats.toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purpleAccent,
+                  )),
 
               const SizedBox(
                 height: 20.0,
@@ -596,35 +619,71 @@ class AppInfo extends ChangeNotifier {
               ),
 
               //call driver button
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    //call driver
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        //call driver
 
-                    // launch("tel://+1 555 555 5555");
-                  },
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.purple,
-                  ),
-                  icon: const Icon(
-                    Icons.phone_android,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                  label: const Text(
-                    "Call Driver",
-                    style: TextStyle(
-                      color: Colors.purpleAccent,
-                      fontWeight: FontWeight.bold,
+                        launch("tel://" + ticketDriver!.phone);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        primary: Colors.purple,
+                      ),
+                      icon: const Icon(
+                        Icons.phone_android,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                      label: const Text(
+                        "Call Driver",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+
+                  // Cancel Ticket Button
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        //cancel ticket
+                        resignFromTicket();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        primary: Colors.purple,
+                      ),
+                      icon: const Icon(
+                        Icons.cancel,
+                        color: Colors.red,
+                        size: 22,
+                      ),
+                      label: const Text(
+                        "Cancel Ticket",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
     );
+    notifyListeners();
+  }
+
+  showUICancelledTicket() {
+    ticketInfoWidget = Container();
+    searchLocationContainerHeight = 220;
     notifyListeners();
   }
 
@@ -682,7 +741,7 @@ class AppInfo extends ChangeNotifier {
       left: 0,
       right: 0,
       child: Container(
-        height: 240,
+        height: 260,
         decoration: const BoxDecoration(
           color: Colors.white38,
           borderRadius: BorderRadius.only(
@@ -701,7 +760,7 @@ class AppInfo extends ChangeNotifier {
               //status of ride
               Center(
                 child: Text(
-                  (timeToArrive! + " to Arrive") ?? "About to Arrive",
+                  (timeToArrive! + " to Arrive"),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -823,6 +882,35 @@ class AppInfo extends ChangeNotifier {
   }
 
   updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng) async {
+    var isPickedUp = false;
+
+    log("updateArrivalTimeToUserPickupLocation" +
+        driverCurrentPositionLatLng.toString());
+
+    LatLng userPickUpPosition =
+        LatLng(userCurrentPosition!.latitude, userCurrentPosition!.longitude);
+
+    if (isPickedUp) {
+      driverCurrentPositionLatLng = LatLng(
+          userDropOffLocation!.locationLatitude!,
+          userDropOffLocation!.locationLongitude!);
+    } else {
+      driverCurrentPositionLatLng = LatLng(
+        ticket!.driverLocation!.latitude,
+        ticket!.driverLocation!.longitude,
+      );
+    }
+    log("Driver current position:  " + driverCurrentPositionLatLng.toString());
+    driverRideStatus = isPickedUp ? "Arrive in ::" : "Driver is Coming ::";
+    var directionDetailsInfo =
+        await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+      driverCurrentPositionLatLng,
+      userPickUpPosition,
+    );
+
+    driverRideStatus =
+        "$driverRideStatus  ${directionDetailsInfo!.duration_text}";
+
     if (requestPositionInfo == true) {
       requestPositionInfo = false;
 
@@ -838,9 +926,6 @@ class AppInfo extends ChangeNotifier {
       if (directionDetailsInfo == null) {
         return;
       }
-
-      driverRideStatus = "Driver is Coming :: " +
-          directionDetailsInfo.duration_text.toString();
 
       if (ticket != null && ticket!.driverId == ticketDriver!.id) {
         var passenger = ticket!.passengers!
@@ -898,6 +983,7 @@ class AppInfo extends ChangeNotifier {
         AssistantMethods.sendNotificationToDriverNow(
           deviceRegistrationToken,
           referenceRideRequest!.key.toString(),
+          ticket!.id!,
           navigatorKey.currentContext,
         );
 
@@ -1056,7 +1142,7 @@ class AppInfo extends ChangeNotifier {
 
         // assign driver
 
-        log("ticket Data" + ticket!.toMap().toString());
+        // log("ticket Data" + ticket!.toMap().toString());
         log("dlist" + dList.first.toJson().toString());
 
         ticketDriver =
@@ -1094,6 +1180,10 @@ class AppInfo extends ChangeNotifier {
       ])
     }).then((value) {
       _ticketSnapshot!.cancel();
+      ticket = null;
+      ticketDriver = null;
+
+      showUICancelledTicket();
       Fluttertoast.showToast(
           msg: "You have resigned from the ticket successfully",
           toastLength: Toast.LENGTH_SHORT,
@@ -1126,7 +1216,8 @@ class AppInfo extends ChangeNotifier {
               userPickUpLocation!.locationLongitude!),
           acceptNewPassenger: false,
           humanReadableDestination: userDropOffLocation!.locationName!,
-          seats: 0);
+          seats: 0,
+          timer: 15);
 
       await FirebaseFirestore.instance
           .collection('Tickets')
@@ -1212,6 +1303,8 @@ class AppInfo extends ChangeNotifier {
               "seats": ticketDriver!.car.seats,
               "acceptNewPassenger": true,
             }).then((value) {
+              log("2: " + driverCurrentPositionLatLng.toString());
+
               updateArrivalTimeToUserPickupLocation(
                   driverCurrentPositionLatLng);
               showUIForAssignedDriverInfo();
@@ -1313,6 +1406,27 @@ class AppInfo extends ChangeNotifier {
     return Future.value(isThereTicket);
   }
 
+  showOtherPassengersOnMap() {
+    markersSet.clear();
+    for (var passenger in ticket!.passengers!) {
+      if (passenger.id != userModelCurrentInfo!.id) {
+        Marker passengerMarker = Marker(
+          markerId: MarkerId(passenger.id),
+          position:
+              LatLng(passenger.origin.latitude, passenger.origin.longitude),
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: InfoWindow(
+            title: passenger.name,
+            snippet: "Passenger",
+          ),
+        );
+        markersSet.add(passengerMarker);
+      }
+    }
+    notifyListeners();
+  }
+
   subscribeToTicket(Ticket tick) {
     try {
       _ticketSnapshot = FirebaseFirestore.instance
@@ -1328,44 +1442,42 @@ class AppInfo extends ChangeNotifier {
           if (ticket!.status == "Pending") {
             showWaitingResponseFromDriverUI();
           } else if (ticket!.status == 'collecting') {
-            showUIForAssignedDriverInfo();
+            updateArrivalTimeToUserPickupLocation(LatLng(
+                ticket!.driverLocation!.latitude,
+                ticket!.driverLocation!.longitude));
+
+            if (ticket!.passengers!
+                    .where((element) => element.id == userModelCurrentInfo!.id)
+                    .first
+                    .isPickedUp ==
+                true) {
+              updateReachingTimeToUserDropOffLocation(LatLng(
+                  ticket!.driverLocation!.latitude,
+                  ticket!.driverLocation!.longitude));
+              showUIForStartedTrip();
+            } else {
+              showOtherPassengersOnMap();
+              showUIForAssignedDriverInfo();
+            }
+
+            if (ticket!.timer == 5 && ticket!.passengers!.length == 1) {
+              Fluttertoast.showToast(
+                  msg:
+                      "Note that you have to Pay 50% of the ticket price, if no one joined the ticket",
+                  toastLength: Toast.LENGTH_SHORT,
+                  gravity: ToastGravity.BOTTOM,
+                  timeInSecForIosWeb: 1,
+                  backgroundColor: Colors.purple,
+                  textColor: Colors.white,
+                  fontSize: 16.0);
+            }
           } else if (ticket!.status == 'started') {
-            ticketInfoWidget = Positioned(
-              child: Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(5),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      blurRadius: 6.0,
-                      spreadRadius: 0.5,
-                      offset: Offset(0.7, 0.7),
-                    ),
-                  ],
-                ),
-                child: Card(
-                  child: Column(
-                    children: [
-                      Text(
-                          "From: ${userPickUpLocation!.humanReadableAddress} \n To: ${tick.humanReadableDestination}"),
-                      const Divider(),
-                      Text("Driver: "),
-                      const Divider(),
-                      TextButton(
-                        onPressed: () async {
-                          resignFromTicket();
-                        },
-                        child:
-                            Text("Cancel", style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
+            updateReachingTimeToUserDropOffLocation(LatLng(
+                ticket!.driverLocation!.latitude,
+                ticket!.driverLocation!.longitude));
+            showUIForStartedTrip();
           } else if (ticket!.status == "Cancelled") {
+            showUICancelledTicket();
             Fluttertoast.showToast(
                 msg: "The ticket is cancelled",
                 toastLength: Toast.LENGTH_SHORT,

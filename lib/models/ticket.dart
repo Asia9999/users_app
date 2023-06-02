@@ -11,6 +11,8 @@ class Ticket {
   int? seats;
   bool? acceptNewPassenger;
   String? humanReadableDestination;
+  GeoPoint? driverLocation;
+  int? timer;
 
   Ticket({
     required this.time,
@@ -22,6 +24,7 @@ class Ticket {
     required this.seats,
     required this.acceptNewPassenger,
     required this.humanReadableDestination,
+    required this.timer,
   });
 
   Ticket.fromMap(Map<String, dynamic> data, String documentId) {
@@ -40,6 +43,8 @@ class Ticket {
     driverId = data['driverId'];
     acceptNewPassenger = data['acceptNewPassenger'];
     humanReadableDestination = data['humanReadableDestination'];
+    driverLocation = data['driverLocation'];
+    timer = data['timer'];
   }
 
   Map<String, dynamic> toMap() {
@@ -54,6 +59,8 @@ class Ticket {
       'acceptNewPassenger': acceptNewPassenger,
       'humanReadableDestination': humanReadableDestination,
       'driverId': driverId ?? "00",
+      'driverLocation': driverLocation ?? GeoPoint(0, 0),
+      'timer': timer ?? 15
     };
   }
 }
