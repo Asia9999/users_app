@@ -1182,6 +1182,10 @@ class AppInfo extends ChangeNotifier {
       _ticketSnapshot!.cancel();
       ticket = null;
       ticketDriver = null;
+      polyLineSet.clear();
+      markersSet.clear();
+      circlesSet.clear();
+      pLineCoOrdinatesList.clear();
 
       showUICancelledTicket();
       Fluttertoast.showToast(
