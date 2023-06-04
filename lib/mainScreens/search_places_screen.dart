@@ -4,7 +4,6 @@ import 'package:users_app/global/map_key.dart';
 import 'package:users_app/models/predicted_places.dart';
 import 'package:users_app/widgets/place_prediction_tile.dart';
 
-
 class SearchPlacesScreen extends StatefulWidget {
   @override
   _SearchPlacesScreenState createState() => _SearchPlacesScreenState();
@@ -17,7 +16,7 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen> {
     if (inputText.length > 1) //2 or more than 2 input characters
     {
       String urlAutoCompleteSearch =
-          "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$inputText&key=$mapKey&components=country:EG";
+          "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$inputText&key=$mapKey&components=country:SA";
 
       var responseAutoCompleteSearch =
           await RequestAssistant.receiveRequest(urlAutoCompleteSearch);
