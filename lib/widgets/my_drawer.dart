@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:users_app/global/global.dart';
 import 'package:users_app/splashScrean/splash_screan.dart';
 
+import '../mainScreens/about_screen.dart';
+import '../mainScreens/profile_screen.dart';
+import '../mainScreens/trips_history_screen.dart';
+
 
 class MyDrawer extends StatefulWidget
 {
@@ -26,7 +30,7 @@ class _MyDrawerState extends State<MyDrawer>
           //header of drawer
           Container(
             height: 165,
-            color: Colors.black45,
+            color: Colors.deepPurple,
             child: DrawerHeader(
               decoration: const BoxDecoration(color: Colors.white),
               child: Row(
@@ -68,6 +72,7 @@ class _MyDrawerState extends State<MyDrawer>
           //body of header
           GestureDetector(
             onTap: (){
+              Navigator.push(context, MaterialPageRoute(builder: (c)=> TripsHistoryScreen()));
 
             },
             child: const ListTile(
@@ -82,6 +87,7 @@ class _MyDrawerState extends State<MyDrawer>
           ),
           GestureDetector(
             onTap: (){
+              Navigator.push(context, MaterialPageRoute(builder: (c)=> ProfileScreen()));
 
             },
             child: const ListTile(
@@ -96,6 +102,7 @@ class _MyDrawerState extends State<MyDrawer>
           ),
           GestureDetector(
             onTap: (){
+              Navigator.push(context, MaterialPageRoute(builder: (c)=> AboutScreen()));
 
             },
             child: const ListTile(
