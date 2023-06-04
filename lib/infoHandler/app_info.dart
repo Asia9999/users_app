@@ -844,6 +844,26 @@ class AppInfo extends ChangeNotifier {
     notifyListeners();
   }
 
+  showUIForArrivedTrip() {
+    showAboutDialog(
+        context: navigatorKey.currentContext!,
+        applicationName: "Arrived",
+        applicationVersion: "You have arrived to your destination",
+        applicationIcon: Text(
+          ticket!.price.toString() + " SAR",
+          style: const TextStyle(
+            color: Colors.green,
+            fontSize: 50,
+          ),
+        ),
+        children: [
+          const Text("You have arrived to your destination"),
+        ]);
+    ticketInfoWidget = Container();
+    searchLocationContainerHeight = 220;
+    notifyListeners();
+  }
+
   saveRideRequestInformation() async {
     //save the RideRequest information
     // 1
@@ -1356,9 +1376,11 @@ class AppInfo extends ChangeNotifier {
           event.docs.forEach((element) async {
             // delete all tickets that are older than 15 mins
             if (DateTime.now()
-                    .difference((element.data()['time'] as Timestamp).toDate())
-                    .inMinutes >
-                15) {
+                        .difference(
+                            (element.data()['time'] as Timestamp).toDate())
+                        .inMinutes >
+                    15 &&
+                element.data()['status'] == "Pending") {
               await FirebaseFirestore.instance
                   .collection('Tickets')
                   .doc(element.id)
@@ -1484,6 +1506,22 @@ class AppInfo extends ChangeNotifier {
             showUICancelledTicket();
             Fluttertoast.showToast(
                 msg: "The ticket is cancelled",
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: Colors.purple,
+                textColor: Colors.white,
+                fontSize: 16.0);
+          } else if (ticket!.status == "arrived") {
+            showUIForArrivedTrip();
+            ticket = null;
+            ticketDriver = null;
+            polyLineSet.clear();
+            markersSet.clear();
+            circlesSet.clear();
+            pLineCoOrdinatesList.clear();
+            Fluttertoast.showToast(
+                msg: "You have arrived to your destination",
                 toastLength: Toast.LENGTH_SHORT,
                 gravity: ToastGravity.BOTTOM,
                 timeInSecForIosWeb: 1,
