@@ -1687,8 +1687,6 @@ class AppInfo extends ChangeNotifier {
                 backgroundColor: Colors.purple,
                 textColor: Colors.white,
                 fontSize: 16.0);
-            ticket = null;
-            ticketDriver = null;
           }
           notifyListeners();
         }
