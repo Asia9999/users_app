@@ -81,6 +81,7 @@ class _SelectNearestActiveDriversScreenState
           return GestureDetector(
             onTap: () {
               chosenDriverId = dList[index].id;
+              price = double.parse(getFareAmountAccordingToVehicleType(index));
               Navigator.pop(context, "driverChoosed");
             },
             child: Card(

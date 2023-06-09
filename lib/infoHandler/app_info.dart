@@ -14,6 +14,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:users_app/main.dart';
+import 'package:users_app/models/direction_details_info.dart';
 import 'package:users_app/models/directions.dart';
 import 'package:users_app/models/driver.dart';
 import 'dart:async';
@@ -36,7 +37,6 @@ class AppInfo extends ChangeNotifier {
   int countTotalTrips = 0;
   List<String> historyTripsKeysList = [];
   List<TripsHistoryModel> allTripsHistoryInformationList = [];
-
 
 // Map Configuration
   static const CameraPosition kGooglePlex = CameraPosition(
@@ -1036,7 +1036,7 @@ class AppInfo extends ChangeNotifier {
     );
 
     driverRideStatus =
-        "$driverRideStatus  ${directionDetailsInfo!.duration_text}";
+        " Driver is Coming:: ${directionDetailsInfo!.duration_text}";
 
     if (requestPositionInfo == true) {
       requestPositionInfo = false;
@@ -1469,6 +1469,8 @@ class AppInfo extends ChangeNotifier {
                 element.id ==
                 (eventSnap.snapshot.value as Map)["driverId"].toString());
 
+            // estmate price calculation
+
             FirebaseFirestore.instance
                 .collection('Tickets')
                 .doc(ticket!.id)
@@ -1477,6 +1479,7 @@ class AppInfo extends ChangeNotifier {
               "status": "collecting",
               "seats": ticketDriver!.car.seats,
               "acceptNewPassenger": true,
+              'price': price
             }).then((value) {
               log("2: " + driverCurrentPositionLatLng.toString());
 
@@ -1703,20 +1706,17 @@ class AppInfo extends ChangeNotifier {
     }
   }
 
-  updateOverAllTripsCounter(int overAllTripsCounter)
-  {
+  updateOverAllTripsCounter(int overAllTripsCounter) {
     countTotalTrips = overAllTripsCounter;
     notifyListeners();
   }
 
-  updateOverAllTripsKeys(List<String> tripsKeysList)
-  {
+  updateOverAllTripsKeys(List<String> tripsKeysList) {
     historyTripsKeysList = tripsKeysList;
     notifyListeners();
   }
 
-  updateOverAllTripsHistoryInformation(TripsHistoryModel eachTripHistory)
-  {
+  updateOverAllTripsHistoryInformation(TripsHistoryModel eachTripHistory) {
     allTripsHistoryInformationList.add(eachTripHistory);
     notifyListeners();
   }
