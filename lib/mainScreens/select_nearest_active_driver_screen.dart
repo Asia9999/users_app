@@ -24,25 +24,28 @@ class _SelectNearestActiveDriversScreenState
     if (tripDirectionDetailsInfo != null) {
       if (dList[index].car.seats == 9) {
         fareAmount =
-            (AssistantMethods.calculateFareAmountFromOriginToDestination(
-                        tripDirectionDetailsInfo!) /
-                    2)
+            ((AssistantMethods.calculateFareAmountFromOriginToDestination(
+                            tripDirectionDetailsInfo!) /
+                        2) /
+                    9)
                 .toStringAsFixed(1);
       }
       if (dList[index].car.seats ==
           6) //means executive type of car - more comfortable pro level
       {
         fareAmount =
-            (AssistantMethods.calculateFareAmountFromOriginToDestination(
-                    tripDirectionDetailsInfo!))
+            ((AssistantMethods.calculateFareAmountFromOriginToDestination(
+                        tripDirectionDetailsInfo!)) /
+                    6)
                 .toStringAsFixed(1);
       }
       if (dList[index].car.seats == 3) // non - executive car - comfortable
       {
         fareAmount =
-            (AssistantMethods.calculateFareAmountFromOriginToDestination(
-                        tripDirectionDetailsInfo!) *
-                    2)
+            ((AssistantMethods.calculateFareAmountFromOriginToDestination(
+                            tripDirectionDetailsInfo!) *
+                        2) /
+                    3)
                 .toString();
       }
     }
@@ -126,7 +129,9 @@ class _SelectNearestActiveDriversScreenState
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      getFareAmountAccordingToVehicleType(index) + " SAR ",
+                      "From: " +
+                          getFareAmountAccordingToVehicleType(index) +
+                          " SAR ",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,

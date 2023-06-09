@@ -97,6 +97,7 @@ class AssistantMethods {
     //USD
     double totalFareAmount = timeTraveledFareAmountPerMinute +
         distanceTraveledFareAmountPerKilometer;
+    totalFareAmount = totalFareAmount * 10;
 
     return double.parse(totalFareAmount.toStringAsFixed(1));
   }

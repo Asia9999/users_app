@@ -549,17 +549,33 @@ class AppInfo extends ChangeNotifier {
                 ),
               ),
 
-              Text(
-                  "Passengers: " +
-                      ticket!.passengers!.length.toString() +
-                      "/" +
-                      ticketDriver!.car.seats.toString(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.purpleAccent,
-                  )),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                      "Passengers: " +
+                          ticket!.passengers!.length.toString() +
+                          "/" +
+                          ticket!.seats.toString(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purpleAccent,
+                      )),
+                  Text(
+                      "Estmated Price: " +
+                          (ticket!.price! / ticket!.passengers!.length)
+                              .toString() +
+                          " SAR",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purpleAccent,
+                      )),
+                ],
+              ),
 
               const SizedBox(
                 height: 20.0,
@@ -845,22 +861,108 @@ class AppInfo extends ChangeNotifier {
   }
 
   showUIForArrivedTrip() {
-    showAboutDialog(
+    showDialog(
         context: navigatorKey.currentContext!,
-        applicationName: "Arrived",
-        applicationVersion: "You have arrived to your destination",
-        applicationIcon: Text(
-          ticket!.price.toString() + " SAR",
-          style: const TextStyle(
-            color: Colors.green,
-            fontSize: 50,
-          ),
-        ),
-        children: [
-          const Text("You have arrived to your destination"),
-        ]);
-    ticketInfoWidget = Container();
+        builder: (c) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            backgroundColor: Colors.purpleAccent,
+            child: Container(
+              margin: const EdgeInsets.all(6),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  Text(
+                    "Trip Fare Amount (  ${ticket!.price} SAR / ${ticket!.passengers!.length} )",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purpleAccent,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  const Divider(
+                    thickness: 4,
+                    color: Colors.purpleAccent,
+                  ),
+                  const SizedBox(
+                    height: 16,
+                  ),
+                  Text(
+                    (ticket!.price! / ticket!.passengers!.length)
+                            .toStringAsFixed(1) +
+                        "SAR",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purpleAccent,
+                      fontSize: 50,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      "This is the total trip amount, Please Pay it to driver.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.purpleAccent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        primary: Colors.purpleAccent,
+                      ),
+                      onPressed: () {
+                        Future.delayed(const Duration(milliseconds: 2000), () {
+                          SystemNavigator.pop();
+                        });
+                      },
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Pay in Cash",
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: Colors.purpleAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 4,
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+
     searchLocationContainerHeight = 220;
+    ticketInfoWidget = Container();
     notifyListeners();
   }
 
@@ -947,7 +1049,7 @@ class AppInfo extends ChangeNotifier {
         return;
       }
 
-      if (ticket != null && ticket!.driverId == ticketDriver!.id) {
+      if (ticket != null) {
         var passenger = ticket!.passengers!
             .where((element) => element.id == userModelCurrentInfo!.id)
             .first;
@@ -1089,6 +1191,50 @@ class AppInfo extends ChangeNotifier {
     }
   }
 
+  Future<Driver> getDriverData(String id) async {
+    Driver driver = Driver(
+        name: "",
+        email: "",
+        phone: "",
+        id: "",
+        token: "",
+        newRideStatus: "",
+        car: Car(
+          car_color: "",
+          car_model: "",
+          car_number: "",
+          type: "",
+        ));
+    await FirebaseDatabase.instance
+        .ref()
+        .child("drivers")
+        .child(id)
+        .once()
+        .then((dataSnapShot) {
+      driver = Driver(
+          name: (dataSnapShot.snapshot.value as Map)['name'].toString(),
+          email: (dataSnapShot.snapshot.value as Map)['email'].toString(),
+          phone: (dataSnapShot.snapshot.value as Map)['phone'].toString(),
+          id: (dataSnapShot.snapshot.value as Map)['id'].toString(),
+          token: (dataSnapShot.snapshot.value as Map)['token'].toString(),
+          newRideStatus:
+              (dataSnapShot.snapshot.value as Map)['newRideStatus'].toString(),
+          car: Car(
+            car_color: (dataSnapShot.snapshot.value as Map)['car_details']
+                    ['car_color']
+                .toString(),
+            car_model: (dataSnapShot.snapshot.value as Map)['car_details']
+                    ['car_model']
+                .toString(),
+            car_number: (dataSnapShot.snapshot.value as Map)['car_details']
+                    ['car_number']
+                .toString(),
+            type: (dataSnapShot.snapshot.value as Map)['car_details']['type']
+                .toString(),
+          ));
+    });
+    return driver;
+  }
   // Ticket Stuff
 
   ticketMainProcess() async {
@@ -1159,14 +1305,14 @@ class AppInfo extends ChangeNotifier {
         ])
       }).then((value) async {
         ticket = tickets.first;
+        ticketDriver = await getDriverData(ticket!.driverId!);
 
         // assign driver
 
         // log("ticket Data" + ticket!.toMap().toString());
-        log("dlist" + dList.first.toJson().toString());
 
-        ticketDriver =
-            dList.where((element) => element.id == ticket!.driverId).first;
+        // ticketDriver =
+        //     dList.where((element) => element.id == ticket!.driverId).first;
 
         Fluttertoast.showToast(
             msg: "You have joined the ticket successfully",
@@ -1178,8 +1324,8 @@ class AppInfo extends ChangeNotifier {
             fontSize: 16.0);
 
         subscribeToTicket(ticket!);
+        notifyListeners();
       });
-      notifyListeners();
     } on Exception catch (e) {
       log(e.toString());
       // TODO
@@ -1464,10 +1610,13 @@ class AppInfo extends ChangeNotifier {
         if (event.data() != null) {
           var data = event.data()!;
           ticket = Ticket.fromMap(data, event.id);
+          log("ticket: ${ticket!.toMap()}");
 
           if (ticket!.status == "Pending") {
+            log("ticket!.status: ${ticket!.status}");
             showWaitingResponseFromDriverUI();
           } else if (ticket!.status == 'collecting') {
+            log("ticket!.status: ${ticket!.status}");
             updateArrivalTimeToUserPickupLocation(LatLng(
                 ticket!.driverLocation!.latitude,
                 ticket!.driverLocation!.longitude));
@@ -1477,11 +1626,13 @@ class AppInfo extends ChangeNotifier {
                     .first
                     .isPickedUp ==
                 true) {
+              log("in Collecting and isPickedUp is true");
               updateReachingTimeToUserDropOffLocation(LatLng(
                   ticket!.driverLocation!.latitude,
                   ticket!.driverLocation!.longitude));
               showUIForStartedTrip();
             } else {
+              log("in Collecting and isPickedUp is false");
               showOtherPassengersOnMap();
               showUIForAssignedDriverInfo();
             }
@@ -1498,6 +1649,7 @@ class AppInfo extends ChangeNotifier {
                   fontSize: 16.0);
             }
           } else if (ticket!.status == 'started') {
+            log("ticket!.status: ${ticket!.status}");
             updateReachingTimeToUserDropOffLocation(LatLng(
                 ticket!.driverLocation!.latitude,
                 ticket!.driverLocation!.longitude));
@@ -1514,8 +1666,7 @@ class AppInfo extends ChangeNotifier {
                 fontSize: 16.0);
           } else if (ticket!.status == "arrived") {
             showUIForArrivedTrip();
-            ticket = null;
-            ticketDriver = null;
+
             polyLineSet.clear();
             markersSet.clear();
             circlesSet.clear();
@@ -1528,6 +1679,8 @@ class AppInfo extends ChangeNotifier {
                 backgroundColor: Colors.purple,
                 textColor: Colors.white,
                 fontSize: 16.0);
+            ticket = null;
+            ticketDriver = null;
           }
           notifyListeners();
         }
