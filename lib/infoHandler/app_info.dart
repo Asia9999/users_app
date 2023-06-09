@@ -24,6 +24,7 @@ import '../global/global.dart';
 import '../mainScreens/select_nearest_active_driver_screen.dart';
 import '../models/active_nearby_available_drivers.dart';
 import '../models/ticket.dart';
+import '../models/trips_history_model.dart';
 import '../widgets/progress_dialog.dart';
 import 'dart:ui' as ui;
 
@@ -32,6 +33,10 @@ class AppInfo extends ChangeNotifier {
   // User Information
   String userName = "your Name";
   String userEmail = "your Email";
+  int countTotalTrips = 0;
+  List<String> historyTripsKeysList = [];
+  List<TripsHistoryModel> allTripsHistoryInformationList = [];
+
 
 // Map Configuration
   static const CameraPosition kGooglePlex = CameraPosition(
@@ -1696,5 +1701,23 @@ class AppInfo extends ChangeNotifier {
       notifyListeners();
       // TODO
     }
+  }
+
+  updateOverAllTripsCounter(int overAllTripsCounter)
+  {
+    countTotalTrips = overAllTripsCounter;
+    notifyListeners();
+  }
+
+  updateOverAllTripsKeys(List<String> tripsKeysList)
+  {
+    historyTripsKeysList = tripsKeysList;
+    notifyListeners();
+  }
+
+  updateOverAllTripsHistoryInformation(TripsHistoryModel eachTripHistory)
+  {
+    allTripsHistoryInformationList.add(eachTripHistory);
+    notifyListeners();
   }
 }
