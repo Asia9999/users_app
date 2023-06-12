@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_geofire/flutter_geofire.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -708,6 +709,167 @@ class AppInfo extends ChangeNotifier {
     notifyListeners();
   }
 
+  showUIForRatingDriver() {
+    var _rating = 0.0;
+    showDialog(
+        context: navigatorKey.currentContext!,
+        builder: (c) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            child: Container(
+              height: 300,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.all(
+                  Radius.circular(20),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Rate Driver",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purpleAccent,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    RatingBar.builder(
+                      initialRating: 0,
+                      minRating: 1,
+                      direction: Axis.horizontal,
+                      allowHalfRating: false,
+                      itemCount: 5,
+                      itemSize: 30,
+                      itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      itemBuilder: (context, _) => const Icon(
+                        Icons.star,
+                        color: Colors.purpleAccent,
+                      ),
+                      onRatingUpdate: (rating) {
+                        log("rating: $rating");
+                        _rating = rating;
+                      },
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        //rate driver
+                        Navigator.pop(c);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        primary: Colors.purpleAccent,
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 50,
+                          vertical: 10,
+                        ),
+                        child: Text(
+                          "Rate",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).then((value) {
+      // show Thanks to using GRH dialog
+
+      showDialog(
+          context: navigatorKey.currentContext!,
+          builder: (c) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                height: 300,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(20),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Thanks for using GRH",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purpleAccent,
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                      const Text(
+                        "We hope you enjoyed your ride",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purpleAccent,
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          //rate driver
+                          Navigator.pop(navigatorKey.currentContext!);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          primary: Colors.purpleAccent,
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 50,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            "OK",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          });
+    });
+  }
+
   showWaitingResponseFromDriverUI() {
     searchLocationContainerHeight = 0;
     ticketInfoWidget = Positioned(
@@ -964,7 +1126,9 @@ class AppInfo extends ChangeNotifier {
               ),
             ),
           );
-        });
+        }).then((value) {
+      showUIForRatingDriver();
+    });
 
     searchLocationContainerHeight = 220;
     ticketInfoWidget = Container();
@@ -1009,7 +1173,11 @@ class AppInfo extends ChangeNotifier {
   }
 
   updateArrivalTimeToUserPickupLocation(driverCurrentPositionLatLng) async {
-    var isPickedUp = false;
+    var isPickedUp = ticket!.passengers
+            ?.where((element) => element.id == userModelCurrentInfo!.id)
+            .first
+            .isPickedUp ??
+        false;
 
     log("updateArrivalTimeToUserPickupLocation" +
         driverCurrentPositionLatLng.toString());
