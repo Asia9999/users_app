@@ -272,6 +272,7 @@ class AppInfo extends ChangeNotifier {
             LatLng(userDropOffLocation!.locationLatitude!,
                 userDropOffLocation!.locationLongitude!),
           ).then((value) => value!.duration_text.toString());
+          log("2: " + timeToArrive!);
 
           showUIForStartedTrip();
         }
@@ -731,6 +732,7 @@ class AppInfo extends ChangeNotifier {
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
                       "Rate Driver",
@@ -814,6 +816,7 @@ class AppInfo extends ChangeNotifier {
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
                         "Thanks for using GRH",
@@ -1028,6 +1031,10 @@ class AppInfo extends ChangeNotifier {
   }
 
   showUIForArrivedTrip() {
+    ticketInfoWidget = Container();
+    searchLocationContainerHeight = 260;
+    notifyListeners();
+
     showDialog(
         context: navigatorKey.currentContext!,
         builder: (c) {
@@ -1070,7 +1077,7 @@ class AppInfo extends ChangeNotifier {
                   Text(
                     (ticket!.price! / ticket!.passengers!.length)
                             .toStringAsFixed(1) +
-                        "SAR",
+                        " SAR",
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.purpleAccent,
@@ -1111,7 +1118,7 @@ class AppInfo extends ChangeNotifier {
                             "Pay in Cash",
                             style: TextStyle(
                               fontSize: 20,
-                              color: Colors.purpleAccent,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1355,6 +1362,12 @@ class AppInfo extends ChangeNotifier {
       if (directionDetailsInfo == null) {
         return;
       }
+
+      timeToArrive =
+          await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+        LatLng(ticket!.origin!.latitude, ticket!.origin!.longitude),
+        LatLng(ticket!.destination!.latitude, ticket!.destination!.longitude),
+      ).then((value) => value!.duration_text.toString());
 
       driverRideStatus = "Going towards Destination :: " +
           directionDetailsInfo.duration_text.toString();
@@ -1828,7 +1841,7 @@ class AppInfo extends ChangeNotifier {
             }
           } else if (ticket!.status == 'started') {
             log("ticket!.status: ${ticket!.status}");
-            updateReachingTimeToUserDropOffLocation(LatLng(
+            await updateReachingTimeToUserDropOffLocation(LatLng(
                 ticket!.driverLocation!.latitude,
                 ticket!.driverLocation!.longitude));
             showUIForStartedTrip();
@@ -1857,6 +1870,7 @@ class AppInfo extends ChangeNotifier {
                 backgroundColor: Colors.purple,
                 textColor: Colors.white,
                 fontSize: 16.0);
+            _ticketSnapshot!.cancel();
           }
           notifyListeners();
         }

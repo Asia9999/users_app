@@ -46,7 +46,7 @@ class Ticket {
     humanReadableDestination = data['humanReadableDestination'];
     driverLocation = data['driverLocation'];
     timer = data['timer'];
-    price = data['price'];
+    price = double.parse(data['price'].toString());
   }
 
   Map<String, dynamic> toMap() {
