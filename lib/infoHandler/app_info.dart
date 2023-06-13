@@ -1724,8 +1724,10 @@ class AppInfo extends ChangeNotifier {
                             userOrigin.longitude) /
                         1000 <
                     1 &&
-                data['acceptNewPassenger'] == true)
+                data['acceptNewPassenger'] == true &&
+                data['status'] == "collecting") {
               tickets.add(Ticket.fromMap(element.data(), element.id));
+            }
             log("tickets: ${tickets.length}");
           });
         }
