@@ -1111,7 +1111,7 @@ class AppInfo extends ChangeNotifier {
                           SystemNavigator.pop();
                         });
                       },
-                      child: const Row(
+                      child:  Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
@@ -1736,7 +1736,7 @@ class AppInfo extends ChangeNotifier {
                             userOrigin.latitude,
                             userOrigin.longitude) /
                         1000 <
-                    1 &&
+                    2 &&
                 data['acceptNewPassenger'] == true &&
                 data['status'] == "collecting") {
               tickets.add(Ticket.fromMap(element.data(), element.id));
